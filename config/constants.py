@@ -9,3 +9,10 @@ WHEEL_MOMENT_OF_INERTIA = WHEEL_MASS * (WHEEL_OUTER_RADIUS ** 2 + WHEEL_INNER_RA
 FRICTION_COEFFICIENT = 0.5
 
 TOTAL_MASS = 0.30
+
+# Image processing constants
+RED_LOWER = (0, 100, 70)
+RED_UPPER = (10, 255, 255)
+
+CAMERA_POSITION = (0, 0, 0.1)  # x, y, z in meters
+CAMERA_ANGLE = (0, 0, 0)  # pitch, yaw, roll in radians
