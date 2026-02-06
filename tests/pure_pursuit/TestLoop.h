@@ -8,7 +8,9 @@
 #include <fstream> // Required for ofstream
 #include <iomanip> // For clean decimal formatting
 
-const double M_PI = 3.141592;
+#ifndef M_PI
+#define M_PI 3.14159265358979323846
+#endif
 
 void test_circle_tracking() {
     const double R = 20.0;
