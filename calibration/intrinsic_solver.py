@@ -79,19 +79,12 @@ ret, mtx, dist, rvecs, tvecs = cv.calibrateCamera(
     flags=cv.CALIB_USE_INTRINSIC_GUESS,
 )
 
-newcameramtx, roi = cv.getOptimalNewCameraMatrix(mtx, dist, (gray.shape[1], gray.shape[0]), 1.0, (gray.shape[1], gray.shape[0]))
+newcameramtx, roi = cv.getOptimalNewCameraMatrix(mtx, dist, (gray.shape[1], gray.shape[0]), 1, (gray.shape[1], gray.shape[0]))
 dst = cv.undistort(img, mtx, dist, None, newcameramtx)
 
 x, y, w, h = roi
+# dst = dst[y:y+h, x:x+w]
 cv.imshow("Undistorted", dst)
-cv.waitKey(0)
-cv.destroyAllWindows()
-
-# undistort using remap with original image dimensions
-mapx, mapy = cv.initUndistortRectifyMap(mtx, dist, None, newcameramtx, (gray.shape[1], gray.shape[0]), 5)
-dst = cv.remap(img, mapx, mapy, cv.INTER_LINEAR)
-
-cv.imshow('calibresult', dst)
 cv.waitKey(0)
 cv.destroyAllWindows()
 
