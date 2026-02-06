@@ -1,0 +1,13 @@
+# Assume camera mounted at (0,0,0)  
+bottom_left_offset:
+    x: -3.625
+    y: 8
+    z: -2
+
+grid_size:
+    x: 7
+    y: 9
+
+square_size: 1 # in
+
+image_file: calibration_image.png
