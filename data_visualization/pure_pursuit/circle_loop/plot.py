@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 import pandas as pd
 import numpy as np
 
-df = pd.read_csv(r'C:\Users\mckal\OneDrive\Documents\Mechatronics\3B\autonomous_rc_car\tests\pure_pursuit\data\circle_tracking_data.csv')
+df = pd.read_csv(r'../tests/pure_pursuit/data/circle_tracking_data.csv')
 plt.figure(figsize=(8,8))
 
 # target circle
