@@ -1,7 +1,9 @@
-Running Tests on Windows
+Running Tests on wsl or linux
 
 cd build
-cmake
-cmake --build .   
-.\Debug\run_tests.exe                                                                          
+cmake ..
+make -j4
+./run_tests        
+
+if you are on macbook then good luck i am not making instructions for you
 
