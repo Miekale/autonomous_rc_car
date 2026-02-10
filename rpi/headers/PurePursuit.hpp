@@ -5,6 +5,9 @@
 #include <cmath>
 #include <limits>
 #include "Constants.hpp"
+#include <utility>
+
+
 
 /*
 coulters original pure pursuit paper
@@ -17,15 +20,23 @@ https://thomasfermi.github.io/Algorithms-for-Automated-Driving/Control/PurePursu
 
 class PurePursuit {
 private:
-    double lookaheadDist;
     Position lastPosition{};
     bool hasLastPosition = false;
     double lookAheadTol;
+    double K_velocity;
+    double K_curve;
+    double lookAheadDist;
+    double maxLinearVel;
+
+    Position rotatePosition(double dx, double dy, double angle);
 
 public:
-    PurePursuit(double lookAheadDist, double lookAheadTol);
-
+  PurePursuit(double lookAheadDist, double lookAheadTol,
+            double K_curve, double K_velocity,
+            double maxLinearVel); 
+    std::pair<double, double> getControl(Position currPos, Position target, const std::vector<Position>& path);
     Position findLookaheadPoint(Position currPos, const std::vector<Position>& path);
+
 };
 
 #endif
