@@ -106,9 +106,58 @@ void simulate_figure8() {
     std::cout << "Figure-8 data saved to data/figure8_visualization.csv\n";
 }
 
+void simulate_90_degree_corner() {
+    const double segment_length = 40.0;
+    const int N_per_segment = 200;
+    std::vector<Position> path;
+
+    // --- 90-Degree Corner Path ---
+    // Segment 1: Straight along X-axis (0,0) to (40,0)
+    for (int i = 0; i < N_per_segment; i++) {
+        double x = i * (segment_length / N_per_segment);
+        path.push_back({x, 0.0, 0.0});
+    }
+    // Segment 2: Sharp turn to Y-axis (40,0) to (40,40)
+    for (int i = 0; i < N_per_segment; i++) {
+        double y = i * (segment_length / N_per_segment);
+        path.push_back({segment_length, y, M_PI/2});
+    }
+
+    // Initialize robot: start slightly behind the path to test acquisition
+    Position robot{-5.0, 0.0, 0.0}; 
+
+    // Using your Section 3 specs: Lookahead=10, Vmax=8
+    PurePursuit pp(10.0, 1.0); 
+    PurePursuitControls ctrl(0.8, 1.2, 15.0, 5.0);
+
+    std::ofstream logFile("corner_visualization.csv");
+    logFile << "robot_x,robot_y,theta,lookahead_x,lookahead_y,v,w\n";
+
+    double dt = 0.1;
+    // Run for enough steps to clear the corner
+    for (int i = 0; i < 400; i++) {
+        Position lookahead = pp.findLookaheadPoint(robot, path);
+        auto [v, w] = ctrl.getControl(robot, lookahead, path);
+
+        // Log robot state
+        logFile << robot.x << "," << robot.y << "," << robot.theta << ","
+                << lookahead.x << "," << lookahead.y << ","
+                << v << "," << w << "\n";
+
+        // Simulate robot motion (Bicycle model/Point mass approximation)
+        robot.x += v * cos(robot.theta) * dt;
+        robot.y += v * sin(robot.theta) * dt;
+        robot.theta += w * dt;
+    }
+
+    logFile.close();
+    std::cout << "90-degree corner data saved to corner_visualization.csv\n";
+}
+
 void test_loop() {
     test_circle_tracking();
     simulate_figure8();
+    simulate_90_degree_corner();
 }
 
 

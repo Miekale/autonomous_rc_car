@@ -8,7 +8,7 @@ import numpy as np
 
 # --- Load recorded robot data ---
 df = pd.read_csv(
-    r'C:\Users\mckal\OneDrive\Documents\Mechatronics\3B\autonomous_rc_car\tests\pure_pursuit\data\figure8_visualization.csv'
+    r'../tests/pure_pursuit/data/figure8_visualization.csv'
 )
 
 plt.figure(figsize=(8, 8))
