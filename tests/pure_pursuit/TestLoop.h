@@ -56,7 +56,7 @@ void test_circle_tracking() {
 
     logFile.close();
     assert(maxRadialError < 5.0);
-    std::cout << "test_circle_tracking passed! Data saved to circle_tracking_data.csv\n";
+    std::cout << "[PASS] test_circle_tracking passed! Data saved to circle_tracking_data.csv\n";
 }
 
 

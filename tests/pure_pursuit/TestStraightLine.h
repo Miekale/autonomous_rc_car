@@ -32,7 +32,7 @@ void test_can_travel_basic() {
     std::cout << robot.x << "," << robot.y << "," 
               << lookahead.x << "," << lookahead.y << "," 
               << v << "," << w << std::endl;
-    std::cout << "test_can_travel_basic passed!\n";
+    std::cout << "[PASS] test_can_travel_basic\n";
 }
 
 void test_lookahead_prefers_heading_alignment() {
@@ -51,7 +51,7 @@ void test_lookahead_prefers_heading_alignment() {
     assert(std::abs(lookahead.x - 1.0) < 1e-6);
     assert(std::abs(lookahead.y) < 1e-6);
 
-    std::cout << "test_lookahead_prefers_heading_alignment passed!\n";
+    std::cout << "[PASS] test_lookahead_prefers_heading_alignment passed\n";
 }
 
 void test_zigzag_tracking_with_tolerance() {
@@ -97,7 +97,7 @@ void test_zigzag_tracking_with_tolerance() {
     // Assert all waypoints reached
     assert(targetIdx == path.size());
 
-    std::cout << "test_zigzag_tracking_with_tolerance passed!\n";
+    std::cout << "[PASS] test_zigzag_tracking_with_tolerance passed\n";
 }
 
 

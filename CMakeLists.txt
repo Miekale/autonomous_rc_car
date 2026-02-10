@@ -9,11 +9,13 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 include_directories(rpi/headers)
 include_directories(arduino/headers)
 include_directories(config)
+include_directories(interfacing/headers)
 
 # 2. Define the source files for the control logic
 set(CONTROL_SOURCES 
     rpi/src/PurePursuit.cpp 
     arduino/src/PurePursuitControls.cpp
+    interfacing/serial/Serial.cpp
 )
 
 # 3. Create the test executable
