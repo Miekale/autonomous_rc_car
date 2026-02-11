@@ -5,6 +5,7 @@
 #include "Perception.hpp"
 #include "Constants.hpp"
 #include "CustomUtils.hpp"
+#include "RescueController.hpp"
 
 enum autonomy_state {
     INIT,
@@ -19,6 +20,7 @@ private:
     autonomy_state _state = INIT; 
     PurePursuit* _pure_pursuit = nullptr;
     Perception* _perception = nullptr;
+    RescueController* _rescue_controller = nullptr;
 
     void do_init();
     void do_lf_pre_rescue();
@@ -29,11 +31,14 @@ private:
     void _transition_state();
 
     Position _closest_bullseye;
+    Position _goal;
+    bool _rescued_lego_person;
+    bool _dropped_lego_person;
 
 public:
     // Constructor
     // Takes perception and controller singletons
-    AutonomyFSM(PurePursuit *pure_pursuit, Perception *perception);
+    AutonomyFSM(PurePursuit *pure_pursuit, Perception *perception, RescueController *rescue_controller);
 
     // Main interface function: step
     void step();

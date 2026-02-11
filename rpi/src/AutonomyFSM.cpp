@@ -1,17 +1,26 @@
 #include "AutonomyFSM.hpp"
 #include "Constants.hpp"
 #include "CustomUtils.hpp"
+#include "RescueController.hpp"
+#include <cstdlib>
 
-AutonomyFSM::AutonomyFSM(PurePursuit* pure_pursuit, Perception* perception) {
+AutonomyFSM::AutonomyFSM(PurePursuit* pure_pursuit, Perception* perception, RescueController* rescue_controller) {
     _pure_pursuit = pure_pursuit;
     _perception = perception;
+    _rescue_controller = rescue_controller;
     _state = INIT;
+
+    _closest_bullseye = Position({1000, 1000, 0});
+    _goal = Position({1000, 1000, 0});
+    _rescued_lego_person = false;
+    _dropped_lego_person = false;
+    
 }
 
 /**
 Steps the FSM.
 
-Can call pure_pursuit or claw_alignment depending on state.
+Can call pure_pursuit or rescue_controller depending on state.
 */
 void AutonomyFSM::step() {
     switch (_state) {
@@ -19,6 +28,12 @@ void AutonomyFSM::step() {
             break;
         case LF_PRE_RESCUE:
             do_lf_pre_rescue();
+        case RESCUING:
+            do_rescuing();
+        case LF_POST_RESCUE:
+            do_lf_post_rescue();
+        case DROPPING:
+            do_dropping();
     }
 
     _transition_state();
@@ -39,12 +54,24 @@ void AutonomyFSM::_transition_state() {
             break;
         
         case RESCUING:
+            // Only exit this state if the rescue controller signals
+            // that we're ready to LF again.
+            if (_rescued_lego_person) {
+                _state = LF_POST_RESCUE;
+            }
             break;
         
         case LF_POST_RESCUE:
+            if (get_magnitude(_goal) < GOAL_DISTANCE_STOP_LF) {
+                _state = DROPPING;
+            }
             break;
         
         case DROPPING:
+            if (_dropped_lego_person) {
+                // Succesfully Finished the challenge!
+                exit(0);  // TODO: do actual cleanup, etc. don't just close
+            }
             break;
     }
 }
@@ -63,7 +90,33 @@ void AutonomyFSM::do_lf_pre_rescue() {
     // Query perception for bullseye, update if exists
     auto bullseye = _perception->get_latest_bullsey_point();
     if (bullseye.has_value()) {
-        Position bullseye_loc = bullseye.value();
+        _closest_bullseye = bullseye.value();
     }
+}
 
+void AutonomyFSM::do_rescuing() {
+    // Step the Rescue state machine
+    _rescued_lego_person = _rescue_controller->step_grab();
+}
+
+void AutonomyFSM::do_lf_post_rescue() {
+    // Query perception for points list
+    std::vector<Position> lf_points = _perception->get_latest_line_follow_points();
+
+    // Run PPS controller
+    Position target_point = _pure_pursuit->findLookaheadPoint(Position({0,0,0}), lf_points);
+    std::pair<double, double> command = _pure_pursuit->getControl(Position({0,0,0}), target_point, lf_points);
+
+    // TODO: send command to Arduino via interfacing library
+
+    // Query perception for goal/dropoff
+    auto end_goal = _perception->get_latest_end_goal_point();
+    if (end_goal.has_value()) {
+        _goal = end_goal.value();
+    }
+}
+
+void AutonomyFSM::do_dropping() {
+    // Step the Rescue state machine
+    _dropped_lego_person = _rescue_controller->step_drop();
 }
