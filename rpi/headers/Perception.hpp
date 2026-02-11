@@ -14,6 +14,7 @@ public:
     // inside FSM as well
     std::vector<Position> get_latest_line_follow_points();
     std::optional<Position> get_latest_bullsey_point();
+    std::optional<Position> get_latest_end_goal_point();
 };
 
 #endif
