@@ -2,12 +2,14 @@ cmake_minimum_required(VERSION 3.10)
 project(Autonomous_RC_Car)
 
 # Set C++ standard
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 # 1. Include directories (No more ../../ mess!)
 include_directories(rpi/headers)
 include_directories(config)
+include_directories(utils)
 include_directories(interfacing/headers)
 
 # 2. Define the source files for the control logic
