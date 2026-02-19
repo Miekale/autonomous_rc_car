@@ -11,6 +11,7 @@ include_directories(rpi/headers)
 include_directories(config)
 include_directories(utils)
 include_directories(interfacing/headers)
+include_directories(controls_experiments/headers)
 
 # 2. Define the source files for the control logic
 set(CONTROL_SOURCES 
