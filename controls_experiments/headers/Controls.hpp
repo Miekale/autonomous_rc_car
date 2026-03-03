@@ -9,6 +9,9 @@ using namespace linalg;
 class Controls {
 public:
 
+    const float WHEEL_RADIUS_MM = 62.0 / 2; // mm
+    const float LENGTH_WHEEL_TO_WHEEL = 160.0; // mm
+
     Controls();
 
     // Runs 1 step
