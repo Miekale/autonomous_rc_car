@@ -23,7 +23,6 @@ private:
     RescueController* _rescue_controller = nullptr;
     Serial* _serial = nullptr;
 
-public:
     void do_init();
     void do_lf_pre_rescue();
     void do_rescuing();
@@ -37,7 +36,7 @@ public:
     bool _rescued_lego_person;
     bool _dropped_lego_person;
 
-    private:
+    public:
     // Constructor
     // Takes perception and controller singletons
     AutonomyFSM(PurePursuit *pure_pursuit, Perception *perception, RescueController *rescue_controller, Serial *serial);

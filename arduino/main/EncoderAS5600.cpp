@@ -1,4 +1,4 @@
-#include "EncoderAS5600.h"
+#include "EncoderAS5600.hpp"
 
 EncoderAS5600::EncoderAS5600(uint8_t sda, uint8_t scl)
     : wire(sda, scl), sdaPin(sda), sclPin(scl) {}

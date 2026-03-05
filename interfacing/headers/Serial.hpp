@@ -7,6 +7,7 @@
 #include <vector>
 #include <fcntl.h>
 #include <poll.h>
+#include <cstring> 
 
 // Command IDs
 enum command_id_type : uint8_t {
