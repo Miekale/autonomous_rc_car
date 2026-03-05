@@ -8,6 +8,8 @@
 #include <fcntl.h>
 #include <poll.h>
 #include <cstring> 
+#include <chrono>
+#include <unistd.h> 
 
 // Command IDs
 enum command_id_type : uint8_t {
@@ -25,7 +27,8 @@ public:
     int writeData(const std::string& data);
     int writeData(const uint8_t command_id, const std::vector<float>& data);
     int readData(char* buffer, size_t size);
-
+    bool waitForAck(uint32_t timeout_ms);
+    bool sendWithRetry(uint8_t cmd, const std::vector<float>& data);
     bool isOpen() const;
 
 private:
@@ -33,7 +36,7 @@ private:
     std::string device;
     speed_t baudrate;
     uint8_t header = 0xAA;
-
+    uint32_t getMillis();
     bool setupPortParams();
     bool openPort();
     uint8_t getCheckSum(const std::vector<uint8_t>& data);

@@ -1,5 +1,5 @@
 #include "Serial.hpp"
-
+#include <iostream>
 
 // docs: https://en.wikibooks.org/wiki/Serial_Programming/termios 
 
@@ -119,6 +119,42 @@ uint8_t Serial::getCheckSum(const std::vector<uint8_t>& data) {
         xor_ ^= val;
     }
     return xor_;
+}
+
+uint32_t Serial::getMillis() {
+    using namespace std::chrono;
+    return duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count();
+}
+
+bool Serial::waitForAck(uint32_t timeout_ms) {
+    uint32_t start = getMillis();
+    uint8_t resp = 0;
+
+    while (getMillis() - start < timeout_ms) {
+
+        if (read(fd, &resp, 1) > 0) { 
+            if (resp == 0x06) return true; // ACK
+            if (resp == 0x15) return false; // NAK
+        }
+        usleep(1000);
+    }
+    return false; 
+}
+
+bool Serial::sendWithRetry(uint8_t cmd, const std::vector<float>& data) {
+
+    for (int attempt = 0; attempt < 3; attempt++) {
+        std::cout << "b";
+        if (writeData(cmd, data) < 0) {
+            std::cout << "a";
+            return false;
+        }
+        std::cout << "b";
+        if (waitForAck(100))
+            std::cout << "sink";
+            return true;
+    }
+    return false;
 }
 
 int Serial::readData(char* buffer, size_t size) {

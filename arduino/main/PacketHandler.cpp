@@ -18,7 +18,7 @@ void PacketHandler::update() {
 
     unsigned long start = millis();
     while (_serial.available() < len + 1) {
-        if (millis() - start > 100) return;  // just some timeout catching
+        if (millis() - start > 30) return;  // just some timeout catching
     }
 
     uint8_t infobuf[len];
@@ -27,8 +27,9 @@ void PacketHandler::update() {
 
     if (validateChecksum(len, infobuf, receivedCRC)) {
         dispatch(infobuf, len);
+        _serial.write(0x06); // acknowledgement
     } else {
-        Serial.println("CRC Error");
+        _serial.write(0x15); // we failed lol
     }
 }
 
