@@ -75,6 +75,52 @@ int Serial::writeData(const std::string& data) {
     return write(fd, data.c_str(), data.size());
 }
 
+int Serial::writeData(const uint8_t command_id, const std::vector<float>& data) {
+    /*
+    Sets up a packet like
+    0x0A 0x09 0x01 [8 bytes of data] checksum
+
+    byte 1 is the header (always 0x0A)
+    byte 2 is the length of the command id + number of data bytes
+    byte 3 is the command id, see the Serial.hpp file for more info
+    data bytes are optional
+    checksum is an additional byte for validation
+    */
+    if (fd == -1) return -1;
+
+    // 1 byte for CmdID + 4 bytes per float
+    uint8_t len = 1 + (data.size() * sizeof(float)); 
+
+    std::vector<uint8_t> packet;
+    packet.reserve(2 + len + 1); // header, len byte, cmd + data, checksum
+
+    packet.push_back(header); 
+    packet.push_back(len);
+    packet.push_back(command_id);
+
+    // Copy each float into the packet
+    for (float val : data) {
+        uint8_t float_bytes[4];
+        std::memcpy(float_bytes, &val, 4); 
+        for (int i = 0; i < 4; i++) {
+            packet.push_back(float_bytes[i]);
+        }
+    }
+
+    // checksum of everything
+    packet.push_back(getCheckSum(packet));
+
+    return write(fd, packet.data(), packet.size());
+}
+
+uint8_t Serial::getCheckSum(const std::vector<uint8_t>& data) {
+    uint8_t xor_ = 0;
+    for (uint8_t val : data) {
+        xor_ ^= val;
+    }
+    return xor_;
+}
+
 int Serial::readData(char* buffer, size_t size) {
     if (fd == -1) return -1;
 

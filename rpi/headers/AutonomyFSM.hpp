@@ -21,7 +21,9 @@ private:
     PurePursuit* _pure_pursuit = nullptr;
     Perception* _perception = nullptr;
     RescueController* _rescue_controller = nullptr;
+    Serial* _serial = nullptr;
 
+public:
     void do_init();
     void do_lf_pre_rescue();
     void do_rescuing();
@@ -35,10 +37,10 @@ private:
     bool _rescued_lego_person;
     bool _dropped_lego_person;
 
-public:
+    private:
     // Constructor
     // Takes perception and controller singletons
-    AutonomyFSM(PurePursuit *pure_pursuit, Perception *perception, RescueController *rescue_controller);
+    AutonomyFSM(PurePursuit *pure_pursuit, Perception *perception, RescueController *rescue_controller, Serial *serial);
 
     // Main interface function: step
     void step();

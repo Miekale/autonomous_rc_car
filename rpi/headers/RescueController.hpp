@@ -1,7 +1,7 @@
 #ifndef RESCUE_CONTROLLER_HPP
 #define RESCUE_CONTROLLER_HPP
 
-#include "Constants.hpp"
+#include "Serial.hpp"
 
 class RescueController {
 private:
@@ -12,8 +12,8 @@ public:
 
     Returns True if rescue is done, False otherwise.
     */
-    bool step_grab();
-    bool step_drop();
+    bool step_grab(Serial& serial);
+    bool step_drop(Serial& serial);
 };
 
 #endif
