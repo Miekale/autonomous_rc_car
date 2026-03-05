@@ -4,10 +4,11 @@
 #include "RescueController.hpp"
 #include <cstdlib>
 
-AutonomyFSM::AutonomyFSM(PurePursuit* pure_pursuit, Perception* perception, RescueController* rescue_controller) {
+AutonomyFSM::AutonomyFSM(PurePursuit* pure_pursuit, Perception* perception, RescueController* rescue_controller, Serial* serial) {
     _pure_pursuit = pure_pursuit;
     _perception = perception;
     _rescue_controller = rescue_controller;
+    _serial = serial;
     _state = INIT;
 
     _closest_bullseye = Position({1000, 1000, 0});
@@ -96,7 +97,7 @@ void AutonomyFSM::do_lf_pre_rescue() {
 
 void AutonomyFSM::do_rescuing() {
     // Step the Rescue state machine
-    _rescued_lego_person = _rescue_controller->step_grab();
+    _rescued_lego_person = _rescue_controller->step_grab(*_serial);
 }
 
 void AutonomyFSM::do_lf_post_rescue() {
@@ -118,5 +119,5 @@ void AutonomyFSM::do_lf_post_rescue() {
 
 void AutonomyFSM::do_dropping() {
     // Step the Rescue state machine
-    _dropped_lego_person = _rescue_controller->step_drop();
+    _dropped_lego_person = _rescue_controller->step_drop(*_serial);
 }
