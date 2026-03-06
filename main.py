@@ -79,7 +79,7 @@ def main() -> int:
     parser.add_argument('--intrinsics', default='config/intrinsics.yaml')
     parser.add_argument('--v', type=float, default=0.2, help='Forward velocity command')
     parser.add_argument('--w', type=float, default=0.8, help='Turn rate magnitude')
-    parser.add_argument('--x-deadband', type=float, default=15, help='Deadband on mean X (meters) for straight')
+    parser.add_argument('--x-deadband', type=float, default=75, help='Deadband on mean X (pixels) for straight')
     parser.add_argument('--show', action='store_true', help='Show debug windows')
     parser.add_argument('--demo_open_claw', default = False, help="Just for demo")
     parser.add_argument('--demo_close_claw', default = False, help="Just for demo")
@@ -89,13 +89,15 @@ def main() -> int:
     if args.demo_close_claw:
         arduino = ArduinoConnection(args.serial, baud=args.baud)
         arduino.write_data(0x02, [])
+        arduino.write_data(0x00, [0.0, 0.0])
         #shit(arduino.serial)
         return
     if args.demo_open_claw:
         arduino = ArduinoConnection(args.serial, baud=args.baud)
-        #arduino.write_data(0x01, [])
+        arduino.write_data(0x01, [])
+        arduino.write_data(0x00, [0.0, 0.0])
         #shit(arduino.serial)
-        walk(arduino)
+        # walk(arduino)
         return
 
     perception = Perception(args.intrinsics, debug=False)
@@ -118,8 +120,11 @@ def main() -> int:
             width = int(frame.shape[1] * (height / frame.shape[0]))
     
             frame = cv2.resize(frame, (width, height))
+            
+            # cutting off the top 60%
+            cut_off = int(height * .6)
 
-            mask, ridge, points = perception.line_detection_ridge(frame, 0)
+            mask, ridge, points = perception.line_detection_ridge(frame, cut_off) 
 
             decision = decide_turn_from_points(points, args.x_deadband, width)
 

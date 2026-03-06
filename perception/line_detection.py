@@ -52,28 +52,41 @@ class Perception:
         return cv2.remap(image, map1, map2, interpolation=cv2.INTER_LINEAR)
 
     def line_detection_ridge(self, image: np.ndarray, height_filter: int):
-
         start = time.perf_counter()
-
         hsv = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
         hsv = cv2.GaussianBlur(hsv, (5, 5), 0)
-        mask = cv2.inRange(hsv, RED_LOWER, RED_UPPER)
+        # mask = cv2.inRange(hsv, RED_LOWER, RED_UPPER)
+
+        lower_red_A = np.array([174, 100, 100])
+        upper_red_A = np.array([179, 255, 255])
+        mask_A = cv2.inRange(hsv, lower_red_A, upper_red_A)
+
+        # Part B: The "orange" red (0 to 15)
+        lower_red_B = np.array([0, 100, 100])
+        upper_red_B = np.array([14, 255, 255])
+        mask_B = cv2.inRange(hsv, lower_red_B, upper_red_B)
+
+        mask = cv2.bitwise_or(mask_A, mask_B)
 
         dist = cv2.distanceTransform(mask, cv2.DIST_L2, 5)
 
         kernel = np.ones((3, 3), np.uint8)
-        dilated = cv2.dilate(dist, kernel)
+        dilated = cv2.dilate(dist, kernel, iterations=2)
+        closed = cv2.morphologyEx(dilated, cv2.MORPH_CLOSE, np.ones((8,8), np.uint8))
 
-        ridge = (dist == dilated) & (dist > 0)
+        ridge = (dist == dilated) & (dist > 5)
         ridge = ridge.astype(np.uint8) * 255
+
+        # Negating points under the height filter
+        ridge[0:height_filter, :] = 0
         
         points = cv2.findNonZero(ridge)
-        # points = self.points2d_to_3d(points.astype(np.float32))
 
         end = time.perf_counter()
         if self.debug:
             print(f"Line detection took {end - start} seconds")
         return mask, ridge, points
+    
 
     def points2d_to_3d(self, points_2d: np.ndarray) -> np.ndarray:
         undistorted = cv2.undistortPoints(
