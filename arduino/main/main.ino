@@ -13,9 +13,15 @@ PacketHandler* handler;
 
 void setup() {
   Serial.begin(38400);
-  robot = new RobotController(clawServo, 9, esc_left, 8, esc_right, 10);
-  handler = new PacketHandler(Serial, *robot);
-  robot->init_motors();
+    robot = new RobotController(clawServo, 9, esc_left, 8, esc_right, 10);
+    handler = new PacketHandler(Serial, *robot);
+
+    if (handler->rpiHandshake()) {
+        Serial.println("alkdsfaklsdjfhJKDSFAKHAGDAGDS killl");
+    }
+    else {
+        robot->init_motors();
+    }
 }
 
 void loop() {

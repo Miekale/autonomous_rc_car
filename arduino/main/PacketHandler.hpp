@@ -13,10 +13,12 @@ private:
 public:
     PacketHandler(Stream& s, RobotController& r);
     void update();
+    bool rpiHandshake();
 
 private:
     bool validateChecksum(uint8_t len, uint8_t* data, uint8_t receivedXor);
     void dispatch(uint8_t* data, uint8_t len);
+    bool waitForStartupPing();
 };
 
 #endif
