@@ -68,7 +68,7 @@ class Perception:
         ridge = ridge.astype(np.uint8) * 255
         
         points = cv2.findNonZero(ridge)
-        points = self.points2d_to_3d(points.astype(np.float32))
+        # points = self.points2d_to_3d(points.astype(np.float32))
 
         end = time.perf_counter()
         if self.debug:
