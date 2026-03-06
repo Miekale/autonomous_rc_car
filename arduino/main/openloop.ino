@@ -21,7 +21,7 @@ Commander command = Commander(Serial);
 void doTarget(char* cmd) { command.scalar(&target_velocity, cmd); }
 void doLimit(char* cmd) { command.scalar(&motor.voltage_limit, cmd); }
 
-void setup() {
+void _setup() {
 
   // use monitoring with serial 
   Serial.begin(115200);
@@ -68,7 +68,7 @@ void setup() {
   _delay(1000);
 }
 
-void loop() {
+void _loop() {
   //target_velocity = 20.0;
   motor.move(target_velocity);
 

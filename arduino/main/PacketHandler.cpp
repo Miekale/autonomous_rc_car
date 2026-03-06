@@ -49,7 +49,9 @@ void PacketHandler::dispatch(uint8_t* data, uint8_t len) {
             float v, w;
             memcpy(&v, &data[1], 4);
             memcpy(&w, &data[5], 4);
-            // drive maybe
+            
+            _robot.execute_v_w_command(v, w);
+            
             break;
         }
         case 0x01: 
