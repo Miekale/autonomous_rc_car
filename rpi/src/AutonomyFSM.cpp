@@ -29,12 +29,16 @@ void AutonomyFSM::step() {
             break;
         case LF_PRE_RESCUE:
             do_lf_pre_rescue();
+            break;
         case RESCUING:
             do_rescuing();
+            break;
         case LF_POST_RESCUE:
             do_lf_post_rescue();
+            break;
         case DROPPING:
             do_dropping();
+            break;
     }
 
     _transition_state();

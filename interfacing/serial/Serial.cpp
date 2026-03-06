@@ -109,7 +109,6 @@ int Serial::writeData(const uint8_t command_id, const std::vector<float>& data) 
 
     // checksum of everything
     packet.push_back(getCheckSum(packet));
-
     return write(fd, packet.data(), packet.size());
 }
 
