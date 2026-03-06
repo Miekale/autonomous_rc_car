@@ -6,6 +6,7 @@
 #include <limits>
 #include "Constants.hpp"
 #include <utility>
+#include <algorithm>
 
 /*
 coulters original pure pursuit paper
@@ -20,19 +21,19 @@ class PurePursuit {
 private:
     Position lastPosition{};
     bool hasLastPosition = false;
-    double lookAheadTol;
-    double K_velocity;
-    double K_curve;
-    double lookAheadDist;
-    double maxLinearVel;
+    float lookAheadTol;
+    float K_velocity;
+    float K_curve;
+    float lookAheadDist;
+    float maxLinearVel;
 
-    Position rotatePosition(double dx, double dy, double angle);
+    Position rotatePosition(float dx, float dy, float angle);
 
 public:
-  PurePursuit(double lookAheadDist, double lookAheadTol,
-            double K_curve, double K_velocity,
-            double maxLinearVel); 
-    std::pair<double, double> getControl(Position currPos, Position target, const std::vector<Position>& path);
+  PurePursuit(float lookAheadDist, float lookAheadTol,
+            float K_curve, float K_velocity,
+            float maxLinearVel); 
+    std::pair<float, float> getControl(Position currPos, Position target, const std::vector<Position>& path);
     Position findLookaheadPoint(Position currPos, const std::vector<Position>& path);
 
 };

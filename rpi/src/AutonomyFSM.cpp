@@ -43,6 +43,7 @@ void AutonomyFSM::step() {
 void AutonomyFSM::_transition_state() {
     switch (_state) {
         case INIT:
+            _state = LF_PRE_RESCUE;
             break;
         
         case LF_PRE_RESCUE:
@@ -84,9 +85,10 @@ void AutonomyFSM::do_lf_pre_rescue() {
 
     // Run PPS controller
     Position target_point = _pure_pursuit->findLookaheadPoint(Position({0,0,0}), lf_points);
-    std::pair<double, double> command = _pure_pursuit->getControl(Position({0,0,0}), target_point, lf_points);
+    std::pair<float, float> command = _pure_pursuit->getControl(Position({0,0,0}), target_point, lf_points);
 
     // TODO: send command to Arduino via interfacing library
+    _rescue_controller->step_pursuit(*_serial, command);
 
     // Query perception for bullseye, update if exists
     auto bullseye = _perception->get_latest_bullsey_point();
@@ -106,9 +108,10 @@ void AutonomyFSM::do_lf_post_rescue() {
 
     // Run PPS controller
     Position target_point = _pure_pursuit->findLookaheadPoint(Position({0,0,0}), lf_points);
-    std::pair<double, double> command = _pure_pursuit->getControl(Position({0,0,0}), target_point, lf_points);
+    std::pair<float, float> command = _pure_pursuit->getControl(Position({0,0,0}), target_point, lf_points);
 
     // TODO: send command to Arduino via interfacing library
+    _rescue_controller->step_pursuit(*_serial, command);
 
     // Query perception for goal/dropoff
     auto end_goal = _perception->get_latest_end_goal_point();

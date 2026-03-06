@@ -16,7 +16,7 @@ enum autonomy_state {
 };
 
 class AutonomyFSM {
-private:
+public:
     autonomy_state _state = INIT; 
     PurePursuit* _pure_pursuit = nullptr;
     Perception* _perception = nullptr;
