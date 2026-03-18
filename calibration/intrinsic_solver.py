@@ -6,7 +6,7 @@ import yaml
 criteria = (cv.TERM_CRITERIA_EPS + cv.TERM_CRITERIA_MAX_ITER, 30, 0.001)
 
 config = None
-with open("calibration_config.yaml", "r") as f:
+with open("calibration_config2.yaml", "r") as f:
     config = yaml.safe_load(f)
  
 points_x = config["grid_size"]["x"]-1
@@ -15,22 +15,21 @@ points_y = config["grid_size"]["y"]-1
 objp = np.zeros(((points_x)* points_y, 3), np.float32)
 
 top_left = np.array([
-    config["bottom_left_offset"]["x"], 
-    config["bottom_left_offset"]["y"] + 9 * config["square_size"], 
-    config["bottom_left_offset"]["z"]
+    config["bottom_left_offset"]["x"] + config["square_size"], 
+    config["bottom_left_offset"]["y"], 
+    config["bottom_left_offset"]["z"] + points_y * config["square_size"]
     ], np.float32)
 
 # additional offset of x and y to accout for not using outermost squares
 for j in range(points_y):
     for i in range(points_x):
         objp[j*points_x+i] = np.array([
-            top_left[0] + i*config["square_size"] + config["square_size"], 
-            top_left[1] - j*config["square_size"] + config["square_size"], 
-            top_left[2]
+            top_left[0] + i*config["square_size"], 
+            top_left[1], 
+            top_left[2] - j * config["square_size"] 
             ], np.float32)
 
-objp = objp * 25.4 # convert to mm
- 
+    
 # Arrays to store object points and image points from all the images.
 objpoints = [] # 3d point in real world space
 imgpoints = [] # 2d points in image plane.
@@ -67,7 +66,7 @@ for fname in images:
  
 cv.destroyAllWindows()
 
-mtx = np.array([[1000.0, 0.0, 0.0], [0.0, 1000.0, 0.0], [0.0, 0.0, 1.0]], dtype=np.float64)
+mtx = np.array([[1000.0, 0.0, gray.shape[1]/2], [0.0, 1000.0, gray.shape[0]/2], [0.0, 0.0, 1.0]], dtype=np.float64)
 
 ret, mtx, dist, rvecs, tvecs = cv.calibrateCamera(
     objpoints,
@@ -81,8 +80,9 @@ ret, mtx, dist, rvecs, tvecs = cv.calibrateCamera(
 newcameramtx, roi = cv.getOptimalNewCameraMatrix(mtx, dist, (gray.shape[1], gray.shape[0]), 1, (gray.shape[1], gray.shape[0]))
 dst = cv.undistort(img, mtx, dist, None, newcameramtx)
 
+print("K", mtx)
 x, y, w, h = roi
-# dst = dst[y:y+h, x:x+w]
+dst = dst[y:y+h, x:x+w]
 cv.imshow("Undistorted", dst)
 cv.waitKey(0)
 cv.destroyAllWindows()
@@ -112,13 +112,12 @@ def points2d_to_3d(points_2d: np.ndarray, camera_matrix: np.ndarray, dist_coeffs
 
     return np.stack((X, Y, Z), axis=1)
 
-mtx = np.array([[996.49526547,   0.        , 960.0], [  0, 796.39222603,  540], [0., 0., 1.]])
 if len(objpoints) > 0 and len(imgpoints) > 0:
     real_pts_3d = np.asarray(objpoints[0], dtype=np.float64).reshape(-1, 3)
     img_pts_2d = np.asarray(imgpoints[0], dtype=np.float64).reshape(-1, 2)
 
     assumed_depth = float(np.mean(real_pts_3d[:, 2]))
-    est_pts_3d = points2d_to_3d(img_pts_2d, mtx, dist, assumed_depth)
+    est_pts_3d = points2d_to_3d(img_pts_2d, newcameramtx, dist, assumed_depth)
 
     print("\nIndex | img(u,v) -> real(X,Y,Z) vs est(X,Y,Z) | err_norm")
     for i in range(min(len(real_pts_3d), len(est_pts_3d))):

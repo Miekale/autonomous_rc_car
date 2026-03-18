@@ -11,54 +11,8 @@
 #include <limits>
 #include <string>
 #include <termios.h>
-#include <unistd.h>
 
-static speed_t baud_to_termios(int baud) {
-    switch (baud) {
-        case 9600: return B9600;
-        case 19200: return B19200;
-        case 38400: return B38400;
-        case 57600: return B57600;
-        case 115200: return B115200;
-        case 230400: return B230400;
-        default: return 0;
-    }
-}
 
-static void print_usage(const char* argv0) {
-    std::cerr
-        << "Usage: " << argv0 << " [options]\n"
-        << "Options:\n"
-        << "  --pp-lookahead-dist <double>\n"
-        << "  --pp-lookahead-tol <double>\n"
-        << "  --pp-k-curve <double>\n"
-        << "  --pp-k-velocity <double>\n"
-        << "  --pp-max-linear-vel <double>\n"
-        << "  --camera <device>                (default: /dev/video0)\n"
-        << "  --serial <device>                (default: /dev/ttyACM0)\n"
-        << "  --baud <int>                      (default: 115200)\n"
-        << "  --loop-sleep-us <int>             (default: 10000)\n"
-        << "  -h, --help\n";
-}
-
-static bool parse_double(const std::string& s, double* out) {
-    errno = 0;
-    char* end = nullptr;
-    double v = std::strtod(s.c_str(), &end);
-    if (errno != 0 || end == s.c_str() || *end != '\0') return false;
-    *out = v;
-    return true;
-}
-
-static bool parse_int(const std::string& s, int* out) {
-    errno = 0;
-    char* end = nullptr;
-    long v = std::strtol(s.c_str(), &end, 10);
-    if (errno != 0 || end == s.c_str() || *end != '\0') return false;
-    if (v < std::numeric_limits<int>::min() || v > std::numeric_limits<int>::max()) return false;
-    *out = static_cast<int>(v);
-    return true;
-}
 
 int main (int argc, char** argv) {
     double pp_lookahead_dist = 1.0;
@@ -69,9 +23,7 @@ int main (int argc, char** argv) {
     std::string camera_device = "/dev/video0";
     std::string serial_device = "/dev/ttyACM0";
     int baud_int = 115200;
-    int loop_sleep_us = 10'000;
 
-    for (int i = 1; i < argc; ++i) {
         const std::string arg = argv[i];
         if (arg == "-h" || arg == "--help") {
             print_usage(argv[0]);
@@ -138,7 +90,6 @@ int main (int argc, char** argv) {
             print_usage(argv[0]);
             return 2;
         }
-    }
 
     const speed_t baudrate = baud_to_termios(baud_int);
     if (baudrate == 0) {

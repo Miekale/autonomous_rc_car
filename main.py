@@ -108,7 +108,8 @@ def main() -> int:
     if not cap.isOpened():
         raise RuntimeError('Failed to open video source')
 
-    arduino = ArduinoConnection(args.serial, baud=args.baud)
+    # arduino = ArduinoConnection(args.serial, baud=args.baud)
+
     try:
         while cap.isOpened():
 
@@ -135,7 +136,7 @@ def main() -> int:
             else:
                 v, w = args.v, 0.0
 
-            _send_pure_pursuit(arduino, v, w)
+            # _send_pure_pursuit(arduino, v, w)
 
             if args.show:
                 cv2.imshow('Frame', frame)
@@ -146,7 +147,7 @@ def main() -> int:
 
     finally:
         cap.release()
-        arduino.closeConnection()
+        
         cv2.destroyAllWindows()
 
     return 0
