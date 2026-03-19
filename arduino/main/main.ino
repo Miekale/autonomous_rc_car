@@ -26,13 +26,23 @@ void setup() {
 void loop() {
   // robot->execute_v_w_command(10, 0);
   
-  robot->set_m_l_speed(1.0);
-  robot->set_m_r_speed(1.0);
+  robot->set_m_l_speed(0.5);
+  robot->set_m_r_speed(0.5);
   
-  delay(2000);
+  delay(1000);
 
-  robot->set_m_l_speed(-1.0);
-  robot->set_m_r_speed(-1.0);
+  robot->set_m_l_speed(0);
+  robot->set_m_r_speed(0);
 
-  delay(2000);
+  delay(1000);
+
+  robot->set_m_l_speed(-0.5);
+  robot->set_m_r_speed(-0.5);
+
+  delay(1000);
+
+  robot->set_m_l_speed(0);
+  robot->set_m_r_speed(0);
+
+  delay(1000);
 }
