@@ -50,15 +50,6 @@ Perception::Perception(std::string camera_device, bool video_file)
 
     // Latest BGR frame
     _latest_bgr_frame = cv::Mat();
-
-    // ── Fixed HSV thresholds ─────────────────────────────────────────────────
-    // Part A: "wrap-around" red  (174–179)
-    _lower_A = cv::Scalar(174, 150, 100);
-    _upper_A = cv::Scalar(179, 255, 255);
-
-    // Part B: "orange" red  (0–14)
-    _lower_B = cv::Scalar(0, 150, 100);
-    _upper_B = cv::Scalar(10, 255, 255);
 }
 
 Perception::~Perception() {}
@@ -249,60 +240,6 @@ std::vector<Position> Perception::get_latest_line_follow_points()
 
     return positions;
 }
-
-// cv::Mat makeDebugView(
-//     const cv::Mat& frame_in,
-//     const cv::Mat& mask,
-//     const cv::Mat& ridge,
-//     const std::vector<cv::Point3f>& points_3d,
-//     int w, int h)
-// {
-//     // Resize frame to half resolution
-//     cv::Mat frame;
-//     cv::resize(frame_in, frame, {w / 2, h / 2}, 0, 0, cv::INTER_NEAREST);
-//     w = frame.cols;
-//     h = frame.rows;
-
-//     // Normalize single-channel images to BGR for stacking
-//     cv::Mat mask_bgr, ridge_bgr;
-//     cv::cvtColor(mask,  mask_bgr,  cv::COLOR_GRAY2BGR);
-//     cv::cvtColor(ridge, ridge_bgr, cv::COLOR_GRAY2BGR);
-
-//     cv::Mat plot_bgr = renderXYPlot(points_3d,
-//         /*xlim=*/{-1000.f, 1000.f},
-//         /*ylim=*/{    0.f, 2000.f},
-//         /*x_index=*/0,
-//         /*y_index=*/2);
-
-//     // Resize all panels to match frame size
-//     auto fit = [&](const cv::Mat& img) {
-//         cv::Mat out;
-//         cv::resize(img, out, {w, h}, 0, 0, cv::INTER_NEAREST);
-//         return out;
-//     };
-
-//     cv::Mat top, bottom, grid;
-//     cv::hconcat(std::vector<cv::Mat>{frame,          fit(mask_bgr)},  top);
-//     cv::hconcat(std::vector<cv::Mat>{fit(ridge_bgr), fit(plot_bgr)},  bottom);
-//     cv::vconcat(std::vector<cv::Mat>{top, bottom}, grid);
-
-//     // Labels
-//     const std::vector<std::string> labels = {
-//         "Frame", "Mask", "Ridge", "3D Points (XZ)"
-//     };
-//     const std::vector<cv::Point> positions = {
-//         {10,      30},
-//         {w + 10,  30},
-//         {10,      h + 30},
-//         {w + 10,  h + 30}
-//     };
-//     for (size_t i = 0; i < labels.size(); ++i) {
-//         cv::putText(grid, labels[i], positions[i],
-//             cv::FONT_HERSHEY_SIMPLEX, 0.8, {0, 255, 0}, 2, cv::LINE_AA);
-//     }
-
-//     return grid;
-// }
 
 std::optional<Position> Perception::get_latest_bullsey_point()
 {
