@@ -115,6 +115,7 @@ int main(int argc, char** argv)
         auto frame = perception.get_latest_bgr_frame();
 
         auto result = perception.detect_line(frame, height_filter, debug);
+        auto bullsey = perception.get_latest_bullsey_point();
 
         // Print point count each frame
         std::cout << "\r3D points: " << result.points_3d.size()

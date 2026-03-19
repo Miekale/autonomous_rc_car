@@ -209,7 +209,8 @@ Perception::detect_line(const cv::Mat& bgr_image, int height_filter, bool debug)
                   << "=======================\n";
     }
 
-    return { mask, ridge, pts2d, pts3d };
+    _latest_detection = { mask, ridge, pts2d, pts3d };
+    return _latest_detection;
 }
 
 
@@ -243,7 +244,19 @@ std::vector<Position> Perception::get_latest_line_follow_points()
 
 std::optional<Position> Perception::get_latest_bullsey_point()
 {
-    // TODO: implement bullseye detection
+    vector<Vec3f> circles;
+    HoughCircles(_latest_bgr_frame.mask, 
+                 circles, 
+                 HOUGH_GRADIENT, 
+                 1,
+                 _latest_bgr_frame.rows/4,  // change this value to detect circles with different distances to each other
+                 100, 30, 
+                 20, 200); // (min_radius & max_radius)
+    
+    if (!circles.empty()) {
+        return circles[0];
+    }
+
     return std::nullopt;
 }
 

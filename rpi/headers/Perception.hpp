@@ -61,6 +61,7 @@ private:
     cv::VideoCapture _cap;
     mutable std::mutex _mtx;
     cv::Mat            _latest_bgr_frame;
+    DetectionResult    _latest_detection;
     bool               _has_frame = false;
 
     // ── Pipeline steps ────────────────────────────────────────────────────────
