@@ -1,5 +1,6 @@
 #include "Serial.hpp"
 #include <iostream>
+#include <chrono>
 
 // docs: https://en.wikibooks.org/wiki/Serial_Programming/termios 
 
@@ -75,7 +76,7 @@ int Serial::writeData(const std::string& data) {
     return write(fd, data.c_str(), data.size());
 }
 
-int Serial::writeData(const uint8_t command_id, const std::vector<float>& data) {
+int Serial::writeData(const uint8_t command_id, const std::vector<float>& data, double timestamp) {
     /*
     Sets up a packet like
     0x0A 0x09 0x01 [8 bytes of data] checksum
@@ -89,7 +90,7 @@ int Serial::writeData(const uint8_t command_id, const std::vector<float>& data) 
     if (fd == -1) return -1;
 
     // 1 byte for CmdID + 4 bytes per float
-    uint8_t len = 1 + (data.size() * sizeof(float)); 
+    uint8_t len = 1 + (data.size() * sizeof(float)) + 2 * sizeof(float);
 
     std::vector<uint8_t> packet;
     packet.reserve(2 + len + 1); // header, len byte, cmd + data, checksum
@@ -106,6 +107,14 @@ int Serial::writeData(const uint8_t command_id, const std::vector<float>& data) 
             packet.push_back(float_bytes[i]);
         }
     }
+    float seconds      = (float)(long long)timestamp; 
+    float microseconds = (float)((timestamp - (long long)timestamp) * 1e6);
+    uint8_t ts_bytes[4];
+    memcpy(ts_bytes, &seconds, 4);
+    for (int i = 0; i < 4; i++) packet.push_back(ts_bytes[i]);
+
+    memcpy(ts_bytes, &microseconds, 4);
+    for (int i = 0; i < 4; i++) packet.push_back(ts_bytes[i]);
 
     // checksum of everything
     packet.push_back(getCheckSum(packet));
@@ -141,10 +150,10 @@ bool Serial::waitForAck(uint32_t timeout_ms) {
     return false; 
 }
 
-bool Serial::sendWithRetry(uint8_t cmd, const std::vector<float>& data) {
+bool Serial::sendWithRetry(uint8_t cmd, const std::vector<float>& data, double timestamp) {
 
     for (int attempt = 0; attempt < 3; attempt++) {
-        if (writeData(cmd, data) < 0) {
+        if (writeData(cmd, data, timestamp) < 0) {
             return false;
         }
         if (waitForAck(100))
@@ -201,7 +210,13 @@ void Serial::handshake() {
     if (!ready) {
         std::cout << "Handshake timeout (3s). Continuing anyway." << std::endl;
     }
-    mySerial.writeData(0x08, {})
+
+    double timestamp = std::chrono::duration<double>(
+        std::chrono::system_clock::now().time_since_epoch()
+    ).count();
+
+    writeData(0x08, {}, timestamp);
+
     if (waitForAck(200)) {
         std::cout << "HANDSHAKE STUPID" << std::endl;
     }
