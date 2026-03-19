@@ -1,6 +1,12 @@
 cmake_minimum_required(VERSION 3.10)
 project(Autonomous_RC_Car)
 
+set(OpenCV_DIR /opt/opencv/lib/cmake/opencv4)
+find_package(OpenCV REQUIRED)
+include_directories( ${OpenCV_INCLUDE_DIRS})
+add_executable(main Main.cpp)
+target_link_libraries(main ${OpenCV_LIBS})
+
 # Set C++ standard
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 set(CMAKE_CXX_STANDARD 17)
