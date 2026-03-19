@@ -56,8 +56,8 @@ bool Serial::setupPortParams() {
     tty.c_iflag = 0;
 
     // block till at least one byte, and delay 0.1 second interbyte timeout
-    tty.c_cc[VMIN]  = 1;
-    tty.c_cc[VTIME] = 1; // so if we don't get a new byte after 0.1s just return our last one
+    tty.c_cc[VMIN]  = 0;
+    tty.c_cc[VTIME] = 1; 
 
     tcflush(fd, TCIFLUSH);
     return tcsetattr(fd, TCSANOW, &tty) == 0;
@@ -144,14 +144,10 @@ bool Serial::waitForAck(uint32_t timeout_ms) {
 bool Serial::sendWithRetry(uint8_t cmd, const std::vector<float>& data) {
 
     for (int attempt = 0; attempt < 3; attempt++) {
-        std::cout << "b";
         if (writeData(cmd, data) < 0) {
-            std::cout << "a";
             return false;
         }
-        std::cout << "b";
         if (waitForAck(100))
-            std::cout << "sink";
             return true;
     }
     return false;
@@ -178,4 +174,36 @@ int Serial::readData(char* buffer, size_t size) {
     return read(fd, buffer, size);
 }
 
+void Serial::handshake() {
+    if (!this->isOpen()) {
+        std::cerr << "Failed to open serial port!" << std::endl;
+        return;
+    }
 
+    char byte;
+    bool ready = false;
+
+    auto start = std::chrono::steady_clock::now();
+
+    while (std::chrono::steady_clock::now() - start < std::chrono::seconds(3)) {
+
+        int n = this->readData(&byte, 1);
+
+        if (n > 0 && (uint8_t)byte == 0x55) {
+            std::cout << "Arduino READY received" << std::endl;
+            ready = true;
+            break;
+        }
+
+        std::this_thread::sleep_for(std::chrono::milliseconds(5));
+    }
+
+    if (!ready) {
+        std::cout << "Handshake timeout (3s). Continuing anyway." << std::endl;
+    }
+    mySerial.writeData(0x08, {})
+    if (waitForAck(200)) {
+        std::cout << "HANDSHAKE STUPID" << std::endl;
+    }
+    return;
+}

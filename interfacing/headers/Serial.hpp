@@ -10,6 +10,7 @@
 #include <cstring> 
 #include <chrono>
 #include <unistd.h> 
+#include <thread>
 
 // Command IDs
 enum command_id_type : uint8_t {
@@ -30,6 +31,7 @@ public:
     bool waitForAck(uint32_t timeout_ms);
     bool sendWithRetry(uint8_t cmd, const std::vector<float>& data);
     bool isOpen() const;
+    void handshake();
 
 private:
     int fd;
