@@ -1,8 +1,8 @@
 # Assume camera mounted at (0,0,0)  
 bottom_left_offset:
     x: -113
-    y: 255
-    z: -27.5375
+    y: 27.5375
+    z: 255
 
 grid_size:
     x: 9

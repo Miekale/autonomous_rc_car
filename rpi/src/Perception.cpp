@@ -2,82 +2,160 @@
 
 #include <opencv2/imgproc.hpp>
 #include <opencv2/calib3d.hpp>
-
+#include <yaml-cpp/yaml.h>
+#include <stdexcept>
+#include <iostream>
 #include <chrono>
-#include <thread>
 
-Perception::Perception(std::string video_port) {
-    _camera_matrix = (cv::Mat_<double>(3, 3)
-        << CAMERA_INTRINSIC_MATRIX[0][0], CAMERA_INTRINSIC_MATRIX[0][1], CAMERA_INTRINSIC_MATRIX[0][2],
-           CAMERA_INTRINSIC_MATRIX[1][0], CAMERA_INTRINSIC_MATRIX[1][1], CAMERA_INTRINSIC_MATRIX[1][2],
-           CAMERA_INTRINSIC_MATRIX[2][0], CAMERA_INTRINSIC_MATRIX[2][1], CAMERA_INTRINSIC_MATRIX[2][2]);
+// ─────────────────────────────────────────────────────────────────────────────
+// Helpers
+// ─────────────────────────────────────────────────────────────────────────────
 
-    _dist_coeffs = (cv::Mat_<double>(1, 5)
-        << CAMERA_DISTORTION_COEFFICIENTS[0], CAMERA_DISTORTION_COEFFICIENTS[1], CAMERA_DISTORTION_COEFFICIENTS[2],
-           CAMERA_DISTORTION_COEFFICIENTS[3], CAMERA_DISTORTION_COEFFICIENTS[4]);
-
-    _mounting_height = MOUNTING_HEIGHT;
-
-    if (_cap.open(video_port)) {
-        _running.store(true);
-        _capture_thread = std::thread(&Perception::capture_loop, this);
-    }
+static double now_sec()
+{
+    using namespace std::chrono;
+    return duration<double>(steady_clock::now().time_since_epoch()).count();
 }
 
-Perception::~Perception() {
-    _running.store(false);
-    if (_capture_thread.joinable()) {
-        _capture_thread.join();
-    }
-    if (_cap.isOpened()) {
-        _cap.release();
-    }
+// ─────────────────────────────────────────────────────────────────────────────
+// Constructor / Destructor
+// ─────────────────────────────────────────────────────────────────────────────
+
+Perception::Perception(std::string intrinsics_yaml_path)
+{
+    // ── Load YAML ────────────────────────────────────────────────────────────
+    YAML::Node data = YAML::LoadFile(intrinsics_yaml_path);
+
+    // Intrinsic matrix  (3×3, row-major in YAML)
+    auto raw_K = data["INTRINSIC_MATRIX"].as<std::vector<std::vector<double>>>();
+    _camera_matrix = cv::Mat(3, 3, CV_64F);
+    for (int r = 0; r < 3; ++r)
+        for (int c = 0; c < 3; ++c)
+            _camera_matrix.at<double>(r, c) = raw_K[r][c];
+
+    // Distortion coefficients (1×N)
+    auto raw_D = data["DISTORTION_COEFFICIENTS"].as<std::vector<double>>();
+    _dist_coeffs = cv::Mat(raw_D, /*copyData=*/true).reshape(1, 1); // 1×N
+
+    // Mounting height (metres above the floor plane)
+    if (data["MOUNTING_HEIGHT"])
+        _mounting_height = data["MOUNTING_HEIGHT"].as<double>();
+
+    // ── Fixed HSV thresholds ─────────────────────────────────────────────────
+    // Part A: "wrap-around" red  (174–179)
+    _lower_A = cv::Scalar(174, 100, 100);
+    _upper_A = cv::Scalar(179, 255, 255);
+
+    // Part B: "orange" red  (0–14)
+    _lower_B = cv::Scalar(0, 75, 100);
+    _upper_B = cv::Scalar(14, 255, 255);
 }
 
-void Perception::capture_loop() {
-    while (_running.load()) {
-        cv::Mat frame;
-        if (!_cap.isOpened()) {
-            set_latest_bgr_frame(cv::Mat());
-            std::this_thread::sleep_for(std::chrono::milliseconds(50));
-            continue;
-        }
+Perception::~Perception() {}
 
-        if (!_cap.read(frame) || frame.empty()) {
-            set_latest_bgr_frame(cv::Mat());
-            std::this_thread::sleep_for(std::chrono::milliseconds(10));
-            continue;
-        }
+// ─────────────────────────────────────────────────────────────────────────────
+// Step 1 – Red mask
+// ─────────────────────────────────────────────────────────────────────────────
 
-        set_latest_bgr_frame(frame);
-        std::this_thread::sleep_for(std::chrono::milliseconds(5));
-    }
+cv::Mat Perception::get_red_mask(const cv::Mat& bgr_image) const
+{
+    cv::Mat blurred;
+    cv::GaussianBlur(bgr_image, blurred, cv::Size(5, 5), 0);
+
+    cv::Mat hsv;
+    cv::cvtColor(blurred, hsv, cv::COLOR_BGR2HSV);
+
+    cv::Mat mask_A, mask_B;
+    cv::inRange(hsv, _lower_A, _upper_A, mask_A);
+    cv::inRange(hsv, _lower_B, _upper_B, mask_B);
+
+    cv::Mat mask;
+    cv::bitwise_or(mask_A, mask_B, mask);
+    return mask;
 }
 
-void Perception::set_latest_bgr_frame(const cv::Mat& bgr_frame) {
-    std::lock_guard<std::mutex> lk(_mtx);
-    if (bgr_frame.empty()) {
-        _latest_bgr_frame.release();
-        _has_frame = false;
-        return;
-    }
-    bgr_frame.copyTo(_latest_bgr_frame);
-    _has_frame = true;
+// ─────────────────────────────────────────────────────────────────────────────
+// Step 2 – Morphological cleanup
+// ─────────────────────────────────────────────────────────────────────────────
+
+cv::Mat Perception::clean_mask(const cv::Mat& mask) const
+{
+    cv::Mat kernel = cv::getStructuringElement(cv::MORPH_RECT, cv::Size(5, 5));
+
+    cv::Mat result;
+    cv::morphologyEx(mask,   result, cv::MORPH_CLOSE, kernel); // fill gaps
+    cv::morphologyEx(result, result, cv::MORPH_OPEN,  kernel); // remove noise
+    return result;
 }
 
-std::vector<cv::Point3d> Perception::points2d_to_3d(const std::vector<cv::Point2f>& points_2d) const {
-    std::vector<cv::Point3d> out;
-    if (points_2d.empty()) {
-        return out;
-    }
+// ─────────────────────────────────────────────────────────────────────────────
+// Step 3 – Ridge / medial-axis extraction via distance-transform local maxima
+// ─────────────────────────────────────────────────────────────────────────────
 
-    cv::Mat src(static_cast<int>(points_2d.size()), 1, CV_32FC2);
-    for (int i = 0; i < src.rows; ++i) {
-        src.at<cv::Vec2f>(i, 0) = cv::Vec2f(points_2d[static_cast<size_t>(i)].x, points_2d[static_cast<size_t>(i)].y);
-    }
+cv::Mat Perception::extract_ridge(const cv::Mat& mask, int height_filter) const
+{
+    // Distance transform (float32)
+    cv::Mat dist;
+    cv::distanceTransform(mask, dist, cv::DIST_L2, 5);
 
-    cv::Mat undist;
-    cv::undistortPoints(src, undist, _camera_matrix, _dist_coeffs, cv::noArray(), _camera_matrix);
+    // Normalise to uint8 so integer comparison is exact
+    cv::Mat dist_norm;
+    cv::normalize(dist, dist_norm, 0, 255, cv::NORM_MINMAX, CV_8U);
+
+    // Dilated version – pixels equal to their dilation are local maxima
+    cv::Mat dilated;
+    cv::dilate(dist_norm, dilated, cv::Mat::ones(3, 3, CV_8U));
+
+    // Local maximum AND minimum distance threshold (≈ half line-width in px)
+    cv::Mat local_max = (dist_norm == dilated) & (dist > 5.0f);
+
+    cv::Mat ridge;
+    local_max.convertTo(ridge, CV_8U, 255.0);
+
+    // Blank out rows above the height filter (image coordinates: row 0 = top)
+    if (height_filter > 0 && height_filter < ridge.rows)
+        ridge(cv::Rect(0, 0, ridge.cols, height_filter)).setTo(0);
+
+    return ridge;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Step 4 – Collect non-zero pixels as 2-D point list
+// ─────────────────────────────────────────────────────────────────────────────
+
+std::vector<cv::Point2f> Perception::extract_points(const cv::Mat& ridge) const
+{
+    std::vector<cv::Point> pts_i;
+    cv::findNonZero(ridge, pts_i);
+
+    std::vector<cv::Point2f> pts;
+    pts.reserve(pts_i.size());
+    for (const auto& p : pts_i)
+        pts.emplace_back(static_cast<float>(p.x), static_cast<float>(p.y));
+
+    return pts;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Step 5 – Convert 2-D points to 3-D coordinates
+// Assumes a vertically mounted camera at _mounting_height above a
+// completely horizontal floor.  Coordinate frame: X right, Y down (depth), Z forward.
+//
+//   depth  = mounting_height
+//   Z      = depth · fy / (v – cy)
+//   X      = Z · (u – cx) / fx
+// ─────────────────────────────────────────────────────────────────────────────
+
+std::vector<cv::Point3d> 
+Perception::points2d_to_3d(const std::vector<cv::Point2f>& points_2d) const
+{
+    if (points_2d.empty()) return {};
+
+    // Undistort pixel coordinates
+    std::vector<cv::Point2f> undistorted;
+    cv::undistortPoints(points_2d, undistorted,
+                        _camera_matrix, _dist_coeffs,
+                        cv::noArray(), _camera_matrix);
 
     const double fx = _camera_matrix.at<double>(0, 0);
     const double fy = _camera_matrix.at<double>(1, 1);
@@ -85,87 +163,90 @@ std::vector<cv::Point3d> Perception::points2d_to_3d(const std::vector<cv::Point2
     const double cy = _camera_matrix.at<double>(1, 2);
     const double depth = _mounting_height;
 
-    out.reserve(points_2d.size());
-    for (int i = 0; i < undist.rows; ++i) {
-        const cv::Vec2f uv = undist.at<cv::Vec2f>(i, 0);
-        const double u = static_cast<double>(uv[0]);
-        const double v = static_cast<double>(uv[1]);
-        const double X = depth * (u - cx) / fx;
-        const double Y = depth * (v - cy) / fy;
-        const double Z = depth;
-        out.emplace_back(X, Y, Z);
+    std::vector<cv::Point3d> pts3d;
+    pts3d.reserve(undistorted.size());
+
+    for (const auto& uv : undistorted)
+    {
+        double u = uv.x;
+        double v = uv.y;
+
+        double Y = depth;
+        double Z = Y * fy / (v - cy);
+        double X = Z * (u - cx) / fx;
+
+        pts3d.emplace_back(X, Y, Z);
     }
-    return out;
+
+    return pts3d;
 }
 
-std::vector<Position> Perception::line_detection_ridge(const cv::Mat& bgr_image) {
-    std::vector<Position> out;
-    if (bgr_image.empty()) {
-        return out;
+// ─────────────────────────────────────────────────────────────────────────────
+// Public pipeline – detect_line
+// ─────────────────────────────────────────────────────────────────────────────
+
+Perception::DetectionResult 
+Perception::detect_line(const cv::Mat& bgr_image, int height_filter, bool debug) const
+{
+    double t0 = now_sec();
+
+    cv::Mat mask  = get_red_mask(bgr_image);          double t1 = now_sec();
+    mask          = clean_mask(mask);                  double t2 = now_sec();
+    cv::Mat ridge = extract_ridge(mask, height_filter);double t3 = now_sec();
+    auto pts2d    = extract_points(ridge);             double t4 = now_sec();
+    auto pts3d    = points2d_to_3d(pts2d);             double t5 = now_sec();
+
+    if (debug)
+    {
+        std::cout << "=======================\n"
+                  << "Detection took   " << (t5 - t0) << " s\n"
+                  << "Red mask         " << (t1 - t0) << " s\n"
+                  << "Clean mask       " << (t2 - t1) << " s\n"
+                  << "Extract ridge    " << (t3 - t2) << " s\n"
+                  << "Extract points   " << (t4 - t3) << " s\n"
+                  << "Points to 3-D    " << (t5 - t4) << " s\n"
+                  << "=======================\n";
     }
 
-    cv::Mat hsv;
-    cv::cvtColor(bgr_image, hsv, cv::COLOR_BGR2HSV);
-    cv::GaussianBlur(hsv, hsv, cv::Size(5, 5), 0);
-
-    const cv::Scalar red_lower(RED_LOWER[0], RED_LOWER[1], RED_LOWER[2]);
-    const cv::Scalar red_upper(RED_UPPER[0], RED_UPPER[1], RED_UPPER[2]);
-    cv::Mat mask;
-    cv::inRange(hsv, red_lower, red_upper, mask);
-
-    cv::Mat dist;
-    cv::distanceTransform(mask, dist, cv::DIST_L2, 5);
-
-    cv::Mat kernel = cv::Mat::ones(3, 3, CV_8U);
-    cv::Mat dilated;
-    cv::dilate(dist, dilated, kernel);
-
-    cv::Mat eq;
-    cv::compare(dist, dilated, eq, cv::CMP_EQ);
-
-    cv::Mat gt0;
-    cv::compare(dist, 0.0, gt0, cv::CMP_GT);
-
-    cv::Mat ridge;
-    cv::bitwise_and(eq, gt0, ridge);
-
-    std::vector<cv::Point> nz;
-    cv::findNonZero(ridge, nz);
-    if (nz.empty()) {
-        return out;
-    }
-
-    std::vector<cv::Point2f> pts2d;
-    pts2d.reserve(nz.size());
-    for (const auto& p : nz) {
-        pts2d.emplace_back(static_cast<float>(p.x), static_cast<float>(p.y));
-    }
-
-    const std::vector<cv::Point3d> pts3d = points2d_to_3d(pts2d);
-    out.reserve(pts3d.size());
-    for (const auto& p : pts3d) {
-        out.push_back(Position{p.x, p.y, 0.0});
-    }
-
-    return out;
+    return { mask, ridge, pts2d, pts3d };
 }
 
-std::vector<Position> Perception::get_latest_line_follow_points() {
+
+void Perception::set_latest_bgr_frame(const cv::Mat& bgr_frame)
+{
+    std::lock_guard<std::mutex> lock(_mtx);
+    _latest_bgr_frame = bgr_frame.clone();
+    _has_frame = true;
+}
+
+std::vector<Position> Perception::get_latest_line_follow_points()
+{
     cv::Mat frame;
     {
-        std::lock_guard<std::mutex> lk(_mtx);
-        if (!_has_frame || _latest_bgr_frame.empty()) {
-            return {};
-        }
-        _latest_bgr_frame.copyTo(frame);
+        std::lock_guard<std::mutex> lock(_mtx);
+        if (!_has_frame) return {};
+        frame = _latest_bgr_frame.clone();
     }
-    return line_detection_ridge(frame);
+
+    constexpr int HEIGHT_FILTER = 0; // adjust as needed
+    auto result = detect_line(frame, HEIGHT_FILTER, /*debug=*/false);
+
+    std::vector<Position> positions;
+    positions.reserve(result.points_3d.size());
+    for (const auto& p : result.points_3d)
+        positions.push_back({ p.x, p.y, p.z });
+
+    return positions;
 }
 
-std::optional<Position> Perception::get_latest_bullsey_point() {
-    return {};
+std::optional<Position> Perception::get_latest_bullsey_point()
+{
+    // TODO: implement bullseye detection
+    return std::nullopt;
 }
 
-std::optional<Position> Perception::get_latest_end_goal_point() {
-    return {};
+std::optional<Position> Perception::get_latest_end_goal_point()
+{
+    // TODO: implement end-goal detection
+    return std::nullopt;
 }

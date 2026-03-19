@@ -16,8 +16,8 @@ objp = np.zeros(((points_x)* points_y, 3), np.float32)
 
 top_left = np.array([
     config["bottom_left_offset"]["x"] + config["square_size"], 
-    config["bottom_left_offset"]["y"], 
-    config["bottom_left_offset"]["z"] + points_y * config["square_size"]
+    config["bottom_left_offset"]["y"] - points_y * config["square_size"], 
+    config["bottom_left_offset"]["z"]
     ], np.float32)
 
 # additional offset of x and y to accout for not using outermost squares
@@ -25,8 +25,8 @@ for j in range(points_y):
     for i in range(points_x):
         objp[j*points_x+i] = np.array([
             top_left[0] + i*config["square_size"], 
-            top_left[1], 
-            top_left[2] - j * config["square_size"] 
+            top_left[1] + j * config["square_size"], 
+            top_left[2], 
             ], np.float32)
 
     
@@ -67,7 +67,7 @@ for fname in images:
 cv.destroyAllWindows()
 
 mtx = np.array([[1000.0, 0.0, gray.shape[1]/2], [0.0, 1000.0, gray.shape[0]/2], [0.0, 0.0, 1.0]], dtype=np.float64)
-
+print("Image shape:", gray.shape)
 ret, mtx, dist, rvecs, tvecs = cv.calibrateCamera(
     objpoints,
     imgpoints,
@@ -77,7 +77,7 @@ ret, mtx, dist, rvecs, tvecs = cv.calibrateCamera(
     flags=cv.CALIB_USE_INTRINSIC_GUESS,
 )
 
-newcameramtx, roi = cv.getOptimalNewCameraMatrix(mtx, dist, (gray.shape[1], gray.shape[0]), 1, (gray.shape[1], gray.shape[0]))
+newcameramtx, roi = cv.getOptimalNewCameraMatrix(mtx, dist, (gray.shape[1], gray.shape[0]), 0.0, (gray.shape[1], gray.shape[0]))
 dst = cv.undistort(img, mtx, dist, None, newcameramtx)
 
 print("K", mtx)
@@ -141,7 +141,8 @@ if input("Write parmas to file? (y / n)") == "y":
         
         yaml.dump({
             "INTRINSIC_MATRIX": mtx,
-            "DISTORTION_COEFFICIENTS": dist
+            "DISTORTION_COEFFICIENTS": dist,
+            "MOUNTING_HEIGHT": 96.635
         }, f, default_flow_style=False)
 
-    print("Parameters written to config/intrinsics.yaml")
+    print("Parameters written to config/intri   nsics.yaml")
