@@ -158,11 +158,7 @@ int main(int argc, char** argv) {
                 return 2;
             }
         } else if (arg == "--camera") {
-            const std::string v = need_value(arg);
-            if (!parse_int(v, &camera_device)) {
-                std::cerr << "Invalid int for " << arg << ": " << v << "\n";
-                return 2;
-            }
+            camera_device = need_value(arg);
         } else if (arg == "--video") {
             const std::string v = need_value(arg);
             if (!parse_bool(v, &video_file)) {
@@ -205,7 +201,7 @@ int main(int argc, char** argv) {
         pp_max_linear_vel
     );
 
-    Perception        perception(camera_device, is_video);
+    Perception        perception(camera_device, video_file);
     RescueController  rescue_controller;
     Serial            serial(serial_device, baudrate);
     AutonomyFSM       fsm(&pure_pursuit, &perception, &rescue_controller, &serial);

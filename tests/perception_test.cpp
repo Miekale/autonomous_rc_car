@@ -1,148 +1,134 @@
 #include "Perception.hpp"
-
-#include <opencv2/highgui.hpp>
+#include <opencv2/opencv.hpp>
 #include <opencv2/imgproc.hpp>
-
-#include <cmath>
 #include <iostream>
-#include <string>
-#include <vector>
 
-int main(int argc, char** argv) {
-    std::string source;
-    if (argc >= 2) {
-        source = argv[1];
+// ─────────────────────────────────────────────────────────────────────────────
+// Render a top-down XZ scatter plot of 3D points into a BGR mat
+// ─────────────────────────────────────────────────────────────────────────────
+
+static cv::Mat render_xy_plot(
+    const std::vector<cv::Point3d>& pts3d,
+    int w, int h,
+    float x_min = -1000.f, float x_max = 1000.f,
+    float z_min =     0.f, float z_max = 2000.f)
+{
+    cv::Mat plot(h, w, CV_8UC3, cv::Scalar(30, 30, 30));
+
+    // Draw axis lines
+    int cx = w / 2;
+    cv::line(plot, {cx, 0}, {cx, h}, cv::Scalar(80, 80, 80), 1);
+    cv::line(plot, {0, h - 1}, {w, h - 1}, cv::Scalar(80, 80, 80), 1);
+
+    // Labels
+    cv::putText(plot, "X", {cx + 4, 14},
+        cv::FONT_HERSHEY_SIMPLEX, 0.4, cv::Scalar(150, 150, 150), 1);
+    cv::putText(plot, "Z", {4, h - 4},
+        cv::FONT_HERSHEY_SIMPLEX, 0.4, cv::Scalar(150, 150, 150), 1);
+
+    for (const auto& p : pts3d)
+    {
+        // Map world coords → pixel coords
+        float px = (p.x - x_min) / (x_max - x_min) * w;
+        float py = h - (p.z - z_min) / (z_max - z_min) * h; // flip Y
+
+        int ix = static_cast<int>(px);
+        int iy = static_cast<int>(py);
+
+        if (ix >= 0 && ix < w && iy >= 0 && iy < h)
+            cv::circle(plot, {ix, iy}, 2, cv::Scalar(0, 200, 255), -1);
     }
 
-    cv::VideoCapture cap;
-    if (!source.empty()) {
-        cap.open(source);
-    } else {
-        cap.open(0);
+    return plot;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Build the 2×2 debug grid:
+//   [ frame    | mask  ]
+//   [ ridge    | plot  ]
+// ─────────────────────────────────────────────────────────────────────────────
+
+static cv::Mat make_debug_grid(
+    const cv::Mat& frame,
+    const cv::Mat& mask,
+    const cv::Mat& ridge,
+    const std::vector<cv::Point3d>& pts3d)
+{
+    const int w = frame.cols;
+    const int h = frame.rows;
+
+    auto fit = [&](const cv::Mat& img) {
+        cv::Mat out;
+        cv::resize(img, out, {w, h}, 0, 0, cv::INTER_NEAREST);
+        return out;
+    };
+
+    // Convert single-channel images to BGR for stacking
+    cv::Mat mask_bgr, ridge_bgr;
+    cv::cvtColor(mask,  mask_bgr,  cv::COLOR_GRAY2BGR);
+    cv::cvtColor(ridge, ridge_bgr, cv::COLOR_GRAY2BGR);
+
+    cv::Mat plot_bgr = render_xy_plot(pts3d, w, h);
+
+    // Stack panels
+    cv::Mat top, bottom, grid;
+    cv::hconcat(std::vector<cv::Mat>{frame,          fit(mask_bgr)},  top);
+    cv::hconcat(std::vector<cv::Mat>{fit(ridge_bgr), fit(plot_bgr)},  bottom);
+    cv::vconcat(std::vector<cv::Mat>{top, bottom}, grid);
+
+    // Labels
+    const std::vector<std::string> labels   = {"Frame", "Mask", "Ridge", "3D Points (XZ)"};
+    const std::vector<cv::Point>   positions = {
+        {10,      30},
+        {w + 10,  30},
+        {10,      h + 30},
+        {w + 10,  h + 30}
+    };
+    for (size_t i = 0; i < labels.size(); ++i)
+        cv::putText(grid, labels[i], positions[i],
+            cv::FONT_HERSHEY_SIMPLEX, 0.8, cv::Scalar(0, 255, 0), 2, cv::LINE_AA);
+
+    return grid;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Main
+// ─────────────────────────────────────────────────────────────────────────────
+
+int main(int argc, char** argv)
+{
+    // Optionally pass a device index or video file path as argv[1]
+    std::string device = {(argc > 1) ? argv[1] : "0"};
+    int height_filter  = (argc > 2) ? std::stoi(argv[2]) : 0;
+
+    std::cout << "Opening: " << device << "\n";
+    std::cout << "Height filter: " << height_filter << "\n";
+    std::cout << "Press 'q' or ESC to quit, 'd' to toggle timing debug\n";
+
+    Perception perception(device, true);
+
+    bool debug = true;
+
+    while (true)
+    {
+        auto frame = perception.get_latest_bgr_frame();
+
+        auto result = perception.detect_line(frame, height_filter, debug);
+
+        // Print point count each frame
+        std::cout << "\r3D points: " << result.points_3d.size()
+                  << "   " << std::flush;
+
+        cv::Mat grid = make_debug_grid(frame, result.mask, result.ridge, result.points_3d);
+
+        cv::imshow("Perception Debug", grid);
+
+        int key = cv::waitKey(1);
+        if (key == 'q' || key == 27) break;   // q or ESC
+        if (key == 'd') debug = !debug;        // toggle timing output
     }
 
-    if (!cap.isOpened()) {
-        std::cerr << "Failed to open video source\n";
-        return 1;
-    }
-
-    Perception perception(0);
-
-    cv::Mat frame;
-    if (!cap.read(frame) || frame.empty()) {
-        std::cerr << "Failed to read first frame\n";
-        return 1;
-    }
-
-    while (cap.isOpened()) {
-        const int height = 600;
-        const int width = static_cast<int>(static_cast<double>(frame.cols) * (static_cast<double>(height) / static_cast<double>(frame.rows)));
-
-        cv::imshow("Frame", frame);
-
-        if (!cap.read(frame) || frame.empty()) {
-            break;
-        }
-        cv::resize(frame, frame, cv::Size(width, height));
-
-        perception.get_latest_bgr_frame();
-        const std::vector<Position> points = perception.get_latest_line_follow_points();
-
-        const int topdown_h = 600;
-        const int topdown_w = 600;
-        cv::Mat topdown(topdown_h, topdown_w, CV_8UC3, cv::Scalar(0, 0, 0));
-
-        const double xmin = -100.0;
-        const double xmax = 100.0;
-        const double ymin = -100.0;
-        const double ymax = 100.0;
-
-        const double xr = std::max(xmax - xmin, 1e-6);
-        const double yr = std::max(ymax - ymin, 1e-6);
-
-        for (const auto& p : points) {
-            const double u_f = (p.x - xmin) / xr * (topdown_w - 1);
-            const double v_f = (p.y - ymin) / yr * (topdown_h - 1);
-            const int u = static_cast<int>(std::lround(u_f));
-            const int v = (topdown_h - 1) - static_cast<int>(std::lround(v_f));
-            if (0 <= u && u < topdown_w && 0 <= v && v < topdown_h) {
-                cv::circle(topdown, cv::Point(u, v), 1, cv::Scalar(0, 255, 0), -1);
-            }
-        }
-
-        cv::putText(
-            topdown,
-            "Top Down: x[-100,100]  y[-100,100]",
-            cv::Point(10, 20),
-            cv::FONT_HERSHEY_SIMPLEX,
-            0.5,
-            cv::Scalar(255, 255, 255),
-            1,
-            cv::LINE_AA
-        );
-
-        cv::circle(topdown, cv::Point(20, 40), 4, cv::Scalar(0, 255, 0), -1);
-        cv::putText(
-            topdown,
-            "Detected points",
-            cv::Point(30, 44),
-            cv::FONT_HERSHEY_SIMPLEX,
-            0.5,
-            cv::Scalar(255, 255, 255),
-            1,
-            cv::LINE_AA
-        );
-
-        const double tick_step = 50.0;
-        const int tick_len = 8;
-        const double font_scale = 0.45;
-        const int font_thickness = 1;
-        const cv::Scalar text_color(255, 255, 255);
-        const cv::Scalar tick_color(180, 180, 180);
-
-        for (double xw = xmin; xw <= xmax + 1e-9; xw += tick_step) {
-            const int u_tick = static_cast<int>(std::lround((xw - xmin) / xr * (topdown_w - 1)));
-            if (0 <= u_tick && u_tick < topdown_w) {
-                cv::line(topdown, cv::Point(u_tick, topdown_h - 1), cv::Point(u_tick, topdown_h - 1 - tick_len), tick_color, 1);
-                cv::putText(
-                    topdown,
-                    std::to_string(static_cast<int>(xw)),
-                    cv::Point(u_tick - 12, topdown_h - 1 - tick_len - 5),
-                    cv::FONT_HERSHEY_SIMPLEX,
-                    font_scale,
-                    text_color,
-                    font_thickness,
-                    cv::LINE_AA
-                );
-            }
-        }
-
-        for (double yw = ymin; yw <= ymax + 1e-9; yw += tick_step) {
-            int v_tick = static_cast<int>(std::lround((yw - ymin) / yr * (topdown_h - 1)));
-            v_tick = (topdown_h - 1) - v_tick;
-            if (0 <= v_tick && v_tick < topdown_h) {
-                cv::line(topdown, cv::Point(0, v_tick), cv::Point(tick_len, v_tick), tick_color, 1);
-                cv::putText(
-                    topdown,
-                    std::to_string(static_cast<int>(yw)),
-                    cv::Point(tick_len + 3, v_tick + 4),
-                    cv::FONT_HERSHEY_SIMPLEX,
-                    font_scale,
-                    text_color,
-                    font_thickness,
-                    cv::LINE_AA
-                );
-            }
-        }
-
-        cv::imshow("Top Down", topdown);
-
-        const int key = cv::waitKey(1);
-        if ((key & 0xFF) == 'q') {
-            break;
-        }
-    }
-
-    cap.release();
+    cv::destroyAllWindows();
+    std::cout << "\nDone.\n";
     return 0;
 }

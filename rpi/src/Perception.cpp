@@ -21,12 +21,12 @@ static double now_sec()
 // Constructor / Destructor
 // ─────────────────────────────────────────────────────────────────────────────
 
-Perception::Perception(int camera_device, bool video_file)
+Perception::Perception(std::string camera_device, bool video_file)
 {
     if (video_file) {
         _cap = cv::VideoCapture(camera_device);
     } else {
-        _cap = cv::VideoCapture(int(camera_device));
+        _cap = cv::VideoCapture(std::stoi(camera_device));
     }
 
     if (!_cap.isOpened()) {
