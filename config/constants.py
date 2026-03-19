@@ -11,8 +11,8 @@ FRICTION_COEFFICIENT = 0.5
 TOTAL_MASS = 0.30
 
 # Image processing constants
-RED_LOWER = (0, 100, 70)
-RED_UPPER = (10, 255, 255)
+# Ranges : [0,179], [0,255], [0, 255]
+RED_LOWER = (0, .3 * 255, 200)
+RED_UPPER = (15, .75 * 255, 255)
 
 CAMERA_POSITION = (0, 0, 0.1)  # x, y, z in meters
-CAMERA_ANGLE = (0, 0, 0)  # pitch, yaw, roll in radians

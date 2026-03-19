@@ -36,7 +36,6 @@ objpoints = [] # 3d point in real world space
 imgpoints = [] # 2d points in image plane.
  
 images = [config["image_file"]]
-# images = ["/home/miekale/Downloads/test.png"]
  
 for fname in images:
     img = cv.imread(fname)
@@ -87,6 +86,51 @@ x, y, w, h = roi
 cv.imshow("Undistorted", dst)
 cv.waitKey(0)
 cv.destroyAllWindows()
+
+
+def points2d_to_3d(points_2d: np.ndarray, camera_matrix: np.ndarray, dist_coeffs: np.ndarray, mounting_height: float) -> np.ndarray:
+    undistorted = cv.undistortPoints(
+        points_2d.reshape(-1, 1, 2),
+        camera_matrix,
+        dist_coeffs,
+        P=camera_matrix,
+    ).reshape(-1, 2)
+
+    fx = camera_matrix[0, 0]
+    fy = camera_matrix[1, 1]
+    cx = camera_matrix[0, 2]
+    cy = camera_matrix[1, 2]
+    depth = float(mounting_height)
+
+    u = undistorted[:, 0]
+    v = undistorted[:, 1]
+
+    Z = np.full_like(u, depth)
+
+    X = (u - cx) * depth / fx
+    Y = (v - cy) * depth / fy
+
+    return np.stack((X, Y, Z), axis=1)
+
+mtx = np.array([[996.49526547,   0.        , 960.0], [  0, 796.39222603,  540], [0., 0., 1.]])
+if len(objpoints) > 0 and len(imgpoints) > 0:
+    real_pts_3d = np.asarray(objpoints[0], dtype=np.float64).reshape(-1, 3)
+    img_pts_2d = np.asarray(imgpoints[0], dtype=np.float64).reshape(-1, 2)
+
+    assumed_depth = float(np.mean(real_pts_3d[:, 2]))
+    est_pts_3d = points2d_to_3d(img_pts_2d, mtx, dist, assumed_depth)
+
+    print("\nIndex | img(u,v) -> real(X,Y,Z) vs est(X,Y,Z) | err_norm")
+    for i in range(min(len(real_pts_3d), len(est_pts_3d))):
+        real_p = real_pts_3d[i]
+        est_p = est_pts_3d[i]
+        err = float(np.linalg.norm(est_p - real_p))
+        u, v = img_pts_2d[i]
+        print(
+            f"{i:4d} | ({u:8.2f},{v:8.2f}) -> "
+            f"real({real_p[0]:9.2f},{real_p[1]:9.2f},{real_p[2]:9.2f})  "
+            f"est({est_p[0]:9.2f},{est_p[1]:9.2f},{est_p[2]:9.2f}) | {err:9.2f}"
+        )
 
 if input("Write parmas to file? (y / n)") == "y":
     with open("../config/intrinsics.yaml", "w") as f:
