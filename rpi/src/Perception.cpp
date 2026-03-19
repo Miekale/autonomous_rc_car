@@ -22,7 +22,7 @@ static double now_sec()
 // Constructor / Destructor
 // ─────────────────────────────────────────────────────────────────────────────
 
-Perception::Perception(std::string camera_device, bool video_file)
+Perception::Perception(std::string camera_device, bool video_file, bool show_debug_plots)
 {
     if (video_file) {
         std::cout << "looking for: " << camera_device << std::endl;
@@ -52,6 +52,7 @@ Perception::Perception(std::string camera_device, bool video_file)
 
     // Latest BGR frame
     _latest_bgr_frame = cv::Mat();
+    _show_debug_plots = show_debug_plots;
 }
 
 Perception::~Perception() {}
@@ -184,6 +185,79 @@ Perception::points2d_to_3d(const std::vector<cv::Point2f>& points_2d) const
     return pts3d;
 }
 
+cv::Mat Perception::render_xz_plot(const std::vector<cv::Point3d>& pts3d,
+                                   int w, int h,
+                                   float x_min, float x_max,
+                                   float z_min, float z_max) const
+{
+    cv::Mat plot(h, w, CV_8UC3, cv::Scalar(30, 30, 30));
+
+    // Draw axis lines.
+    const int cx = w / 2;
+    cv::line(plot, {cx, 0}, {cx, h}, cv::Scalar(80, 80, 80), 1);
+    cv::line(plot, {0, h - 1}, {w, h - 1}, cv::Scalar(80, 80, 80), 1);
+
+    // Labels.
+    cv::putText(plot, "X", {cx + 4, 14},
+                cv::FONT_HERSHEY_SIMPLEX, 0.4, cv::Scalar(150, 150, 150), 1);
+    cv::putText(plot, "Z", {4, h - 4},
+                cv::FONT_HERSHEY_SIMPLEX, 0.4, cv::Scalar(150, 150, 150), 1);
+
+    for (const auto& p : pts3d)
+    {
+        const float px = (p.x - x_min) / (x_max - x_min) * w;
+        const float py = h - (p.z - z_min) / (z_max - z_min) * h;
+        const int ix = static_cast<int>(px);
+        const int iy = static_cast<int>(py);
+
+        if (ix >= 0 && ix < w && iy >= 0 && iy < h) {
+            cv::circle(plot, {ix, iy}, 2, cv::Scalar(0, 200, 255), -1);
+        }
+    }
+
+    return plot;
+}
+
+cv::Mat Perception::make_debug_grid(const cv::Mat& frame,
+                                    const cv::Mat& mask,
+                                    const cv::Mat& ridge,
+                                    const std::vector<cv::Point3d>& pts3d) const
+{
+    const int w = frame.cols;
+    const int h = frame.rows;
+
+    auto fit = [&](const cv::Mat& img) {
+        cv::Mat out;
+        cv::resize(img, out, {w, h}, 0, 0, cv::INTER_NEAREST);
+        return out;
+    };
+
+    cv::Mat mask_bgr, ridge_bgr;
+    cv::cvtColor(mask, mask_bgr, cv::COLOR_GRAY2BGR);
+    cv::cvtColor(ridge, ridge_bgr, cv::COLOR_GRAY2BGR);
+    cv::Mat plot_bgr = render_xz_plot(pts3d, w, h);
+
+    cv::Mat top, bottom, grid;
+    cv::hconcat(std::vector<cv::Mat>{frame, fit(mask_bgr)}, top);
+    cv::hconcat(std::vector<cv::Mat>{fit(ridge_bgr), fit(plot_bgr)}, bottom);
+    cv::vconcat(std::vector<cv::Mat>{top, bottom}, grid);
+
+    const std::vector<std::string> labels = {"Frame", "Mask", "Ridge", "3D Points (XZ)"};
+    const std::vector<cv::Point> positions = {
+        {10, 30},
+        {w + 10, 30},
+        {10, h + 30},
+        {w + 10, h + 30}
+    };
+    for (size_t i = 0; i < labels.size(); ++i) {
+        cv::putText(grid, labels[i], positions[i], cv::FONT_HERSHEY_SIMPLEX,
+                    0.8, cv::Scalar(0, 255, 0), 2, cv::LINE_AA);
+    }
+
+    cv::resize(grid, grid, {int(1920 / 1.5), int(1080 / 1.5)}, 0, 0, cv::INTER_NEAREST);
+    return grid;
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Public pipeline – detect_line
 // ─────────────────────────────────────────────────────────────────────────────
@@ -211,7 +285,17 @@ Perception::detect_line(const cv::Mat& bgr_image, int height_filter, bool debug)
                   << "=======================\n";
     }
 
+    if (_show_debug_plots) {
+        cv::Mat grid = make_debug_grid(bgr_image, mask, ridge, pts3d);
+        cv::imshow("Perception Debug", grid);
+    }
+
     return { mask, ridge, pts2d, pts3d };
+}
+
+void Perception::set_debug_plots_enabled(bool enabled)
+{
+    _show_debug_plots = enabled;
 }
 
 

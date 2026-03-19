@@ -23,7 +23,9 @@ public:
         std::vector<cv::Point3d>  points_3d;  // back-projected floor coords
     };
 
-    Perception(std::string camera_device, bool video_file = false);
+    Perception(std::string camera_device,
+               bool        video_file = false,
+               bool        show_debug_plots = false);
     ~Perception();
 
     // ── Frame injection (e.g. from a ROS callback or capture thread) ──────────
@@ -33,6 +35,7 @@ public:
     DetectionResult detect_line(const cv::Mat& bgr_image,
                                 int            height_filter,
                                 bool           debug = false) const;
+    void set_debug_plots_enabled(bool enabled);
 
     // ── FSM / controller interface ────────────────────────────────────────────
     std::vector<Position>   get_latest_line_follow_points();
@@ -62,6 +65,7 @@ private:
     mutable std::mutex _mtx;
     cv::Mat            _latest_bgr_frame;
     bool               _has_frame = false;
+    bool               _show_debug_plots = false;
 
     // ── Pipeline steps ────────────────────────────────────────────────────────
     cv::Mat                  get_red_mask   (const cv::Mat& bgr_image) const;
@@ -69,6 +73,14 @@ private:
     cv::Mat                  extract_ridge  (const cv::Mat& mask, int height_filter) const;
     std::vector<cv::Point2f> extract_points (const cv::Mat& ridge)      const;
     std::vector<cv::Point3d> points2d_to_3d (const std::vector<cv::Point2f>& pts2d) const;
+    cv::Mat                  render_xz_plot (const std::vector<cv::Point3d>& pts3d,
+                                             int w, int h,
+                                             float x_min = -1000.f, float x_max = 1000.f,
+                                             float z_min = 0.f, float z_max = 2000.f) const;
+    cv::Mat                  make_debug_grid(const cv::Mat& frame,
+                                             const cv::Mat& mask,
+                                             const cv::Mat& ridge,
+                                             const std::vector<cv::Point3d>& pts3d) const;
 };
 
 #endif // PERCEPTION_HPP
