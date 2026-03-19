@@ -32,6 +32,7 @@ public:
     bool sendWithRetry(uint8_t cmd, const std::vector<float>& data, double timestamp);
     bool isOpen() const;
     void handshake();
+    void readAndPrint();
 
 private:
     int fd;
