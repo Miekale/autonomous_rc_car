@@ -2,12 +2,13 @@
 #include "Arduino.h"
 
 // RobotController.cpp
-RobotController::RobotController(Servo& servo, int servo_pin, Servo& motor_left, int motor_l_pin, Servo& motor_right, int motor_r_pin)
-    : _servo(servo), _motor_l(motor_left), _motor_r(motor_right)  // initializer list for references
+RobotController::    RobotController(Servo& servo, int servo_pin, int motor_L_high_pin, int motor_L_low_pin, int motor_R_high_pin, int motor_R_low_pin)
+    : _servo(servo), _m_L_high_pin(motor_L_high_pin), _m_L_low_pin(motor_L_low_pin), _m_R_high_pin(motor_R_high_pin), _m_R_low_pin(motor_R_low_pin) 
 {
-    _servo.attach(servo_pin);
-    _motor_l.attach(motor_l_pin);
-    _motor_r.attach(motor_r_pin);
+    pinMode(_m_L_high_pin, OUTPUT);
+    pinMode(_m_L_low_pin, OUTPUT);
+    pinMode(_m_R_high_pin, OUTPUT);
+    pinMode(_m_R_low_pin, OUTPUT);
 }
 
 void RobotController::openClaw() {
@@ -19,35 +20,45 @@ void RobotController::closeClaw() {
 }
 
 void RobotController::init_motors() {
-  Serial.println("Sending 1000 PWM for 15 seconds: plug in ESCs left and right...");
-
-  _motor_l.writeMicroseconds(1000);
-  _motor_r.writeMicroseconds(1000);
-
-  delay(15000);
-
-  Serial.println("1000 handshake period over! If 3 rising tones then ARMED");
+    Serial.println("Initialized Motors");
 }
 
 void RobotController::set_m_l_speed(float percent) {
-    if (percent < 0 || percent > 1) {
-        Serial.println("SPEED (PERCENT) MUST BE BETWEEN 0-1");
-        return false;
-    }
-
-    _motor_l.writeMicroseconds(1000 + percent * 1000);
-    Serial.print("LEFT: ");
-    Serial.println(1000 + percent * 1000);}
-
-void RobotController::set_m_r_speed(float percent) {
-    if (percent < 0 || percent > 1) {
+    if (percent < -1 || percent > 1) {
         Serial.println("SPEED (PERCENT) MUST BE BETWEEN 0-1");
         return;
     }
 
-    _motor_r.writeMicroseconds(1000 + percent * 1000);
+    if (percent >= 0) {
+        analogWrite(_m_L_high_pin, percent * 255);  // PWM 255 is max, 0 is min
+        analogWrite(_m_L_low_pin, 0);
+    }
+    else {
+        analogWrite(_m_L_low_pin, abs(percent) * 255);
+        analogWrite(_m_L_high_pin, 0);
+    }
+
+    Serial.print("LEFT: ");
+    Serial.println(percent * 100);
+}
+
+void RobotController::set_m_r_speed(float percent) {
+    if (percent < -1 || percent > 1) {
+        Serial.println("SPEED (PERCENT) MUST BE BETWEEN 0-1");
+        return;
+    }
+
+    if (percent >= 0) {
+        analogWrite(_m_R_high_pin, percent * 255);  // PWM 255 is max, 0 is min
+        analogWrite(_m_R_low_pin, 0);
+    }
+    else {
+        analogWrite(_m_R_low_pin, abs(percent) * 255);
+        analogWrite(_m_R_high_pin, 0);
+    }
+
     Serial.print("RIGHT: ");
-    Serial.println(1000 + percent * 1000);
+    Serial.println(percent * 100);
 }
 
 void RobotController::execute_v_w_command(float v, float w) {

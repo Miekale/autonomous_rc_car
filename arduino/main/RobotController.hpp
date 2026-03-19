@@ -5,12 +5,16 @@
 
 class RobotController {
 private:
+
     Servo& _servo;
-    Servo& _motor_l;
-    Servo& _motor_r;
+    
+    int _m_L_high_pin;
+    int _m_L_low_pin;
+    int _m_R_high_pin;
+    int _m_R_low_pin;
 
 public: 
-    RobotController(Servo& servo, int servo_pin, Servo& motor_left, int motor_l_pin, Servo& motor_right, int motor_r_pin);
+    RobotController(Servo& servo, int servo_pin, int motor_L_high_pin, int motor_L_low_pin, int motor_R_high_pin, int motor_R_low_pin);
 
     // Claw
     void openClaw();

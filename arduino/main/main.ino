@@ -3,22 +3,36 @@
 #include "RobotController.hpp"
 #include "PacketHandler.hpp"
 
-// Setup servos and motors ports
-Servo clawServo;
-Servo esc_left;
-Servo esc_right;
+// Pin definition
+const int MOTOR_L_HIGH_PIN = 9;
+const int MOTOR_L_LOW_PIN = 10;
+const int MOTOR_R_HIGH_PIN = 11;
+const int MOTOR_R_LOW_PIN = 12;
+
+// Declare servos and motors ports
+Servo claw_servo;
+int claw_servo_pin = 7; // TODO CHECK THIS
 
 RobotController* robot;
 PacketHandler* handler;
 
 void setup() {
   Serial.begin(38400);
-  robot = new RobotController(clawServo, 9, esc_left, 8, esc_right, 10);
+  robot = new RobotController(claw_servo, claw_servo_pin, MOTOR_L_HIGH_PIN, MOTOR_L_LOW_PIN, MOTOR_R_HIGH_PIN, MOTOR_R_LOW_PIN);
   handler = new PacketHandler(Serial, *robot);
   robot->init_motors();
 }
 
 void loop() {
   // robot->execute_v_w_command(10, 0);
-  handler->update();
+  
+  robot->set_m_l_speed(1.0);
+  robot->set_m_r_speed(1.0);
+  
+  delay(2000);
+
+  robot->set_m_l_speed(-1.0);
+  robot->set_m_r_speed(-1.0);
+
+  delay(2000);
 }
