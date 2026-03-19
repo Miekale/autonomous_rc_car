@@ -14,9 +14,9 @@ public:
 
     Returns True if rescue is done, False otherwise.
     */
-    bool step_grab(Serial& serial);
-    bool step_drop(Serial& serial);
-    bool step_pursuit(Serial& serial, const std::pair<float, float>& ppdata);
+    bool step_grab(Serial& serial, double timestamp);
+    bool step_drop(Serial& serial, double timestamp);
+    bool step_pursuit(Serial& serial, const std::pair<float, float>& ppdata, double timestamp);
 };
 
 #endif

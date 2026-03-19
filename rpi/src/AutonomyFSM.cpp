@@ -85,6 +85,10 @@ void AutonomyFSM::_transition_state() {
 
 void AutonomyFSM::do_lf_pre_rescue() {
     // Query perception for points list
+    double timestamp = std::chrono::duration_cast<std::chrono::milliseconds>(
+        std::chrono::system_clock::now().time_since_epoch()
+    ).count();
+
     std::vector<Position> lf_points = _perception->get_latest_line_follow_points();
 
     // Run PPS controller
@@ -92,7 +96,7 @@ void AutonomyFSM::do_lf_pre_rescue() {
     std::pair<float, float> command = _pure_pursuit->getControl(Position({0,0,0}), target_point, lf_points);
 
     // TODO: send command to Arduino via interfacing library
-    _rescue_controller->step_pursuit(*_serial, command);
+    _rescue_controller->step_pursuit(*_serial, command, timestamp);
 
     // Query perception for bullseye, update if exists
     auto bullseye = _perception->get_latest_bullsey_point();
@@ -108,6 +112,9 @@ void AutonomyFSM::do_rescuing() {
 
 void AutonomyFSM::do_lf_post_rescue() {
     // Query perception for points list
+    double timestamp = std::chrono::duration_cast<std::chrono::milliseconds>(
+        std::chrono::system_clock::now().time_since_epoch()
+    ).count();
     std::vector<Position> lf_points = _perception->get_latest_line_follow_points();
 
     // Run PPS controller
@@ -115,7 +122,7 @@ void AutonomyFSM::do_lf_post_rescue() {
     std::pair<float, float> command = _pure_pursuit->getControl(Position({0,0,0}), target_point, lf_points);
 
     // TODO: send command to Arduino via interfacing library
-    _rescue_controller->step_pursuit(*_serial, command);
+    _rescue_controller->step_pursuit(*_serial, command, timestamp);
 
     // Query perception for goal/dropoff
     auto end_goal = _perception->get_latest_end_goal_point();
@@ -126,5 +133,8 @@ void AutonomyFSM::do_lf_post_rescue() {
 
 void AutonomyFSM::do_dropping() {
     // Step the Rescue state machine
-    _dropped_lego_person = _rescue_controller->step_drop(*_serial);
+    double timestamp = std::chrono::duration_cast<std::chrono::milliseconds>(
+        std::chrono::system_clock::now().time_since_epoch()
+    ).count();
+    _dropped_lego_person = _rescue_controller->step_drop(*_serial, timestamp);
 }
