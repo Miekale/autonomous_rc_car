@@ -85,9 +85,9 @@ void AutonomyFSM::_transition_state() {
 
 void AutonomyFSM::do_lf_pre_rescue() {
     // Query perception for points list
-    double timestamp = std::chrono::duration_cast<std::chrono::milliseconds>(
+    double timestamp = std::chrono::duration<double>(
         std::chrono::system_clock::now().time_since_epoch()
-    ).count();
+    ).count(); // seconds with fractional part
 
     std::vector<Position> lf_points = _perception->get_latest_line_follow_points();
 
@@ -112,9 +112,9 @@ void AutonomyFSM::do_rescuing() {
 
 void AutonomyFSM::do_lf_post_rescue() {
     // Query perception for points list
-    double timestamp = std::chrono::duration_cast<std::chrono::milliseconds>(
+    double timestamp = std::chrono::duration<double>(
         std::chrono::system_clock::now().time_since_epoch()
-    ).count();
+    ).count(); // seconds with fractional part
     std::vector<Position> lf_points = _perception->get_latest_line_follow_points();
 
     // Run PPS controller
@@ -133,8 +133,8 @@ void AutonomyFSM::do_lf_post_rescue() {
 
 void AutonomyFSM::do_dropping() {
     // Step the Rescue state machine
-    double timestamp = std::chrono::duration_cast<std::chrono::milliseconds>(
+    double timestamp = std::chrono::duration<double>(
         std::chrono::system_clock::now().time_since_epoch()
-    ).count();
+    ).count(); // seconds with fractional part
     _dropped_lego_person = _rescue_controller->step_drop(*_serial, timestamp);
 }

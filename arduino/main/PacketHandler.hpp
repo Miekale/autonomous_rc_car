@@ -9,7 +9,8 @@ class PacketHandler {
 private:
     Stream& _serial;
     RobotController& _robot;
-    float _handshakeEpoch = 0.0f; // stored handshake time
+    float _handshakeEpoch = 0.0f;
+    unsigned long _handshakeMillis = 0;
 
 
 public:

@@ -20,7 +20,8 @@ void setup() {
   Serial.begin(38400);
   robot = new RobotController(claw_servo, claw_servo_pin, MOTOR_L_HIGH_PIN, MOTOR_L_LOW_PIN, MOTOR_R_HIGH_PIN, MOTOR_R_LOW_PIN);
   handler = new PacketHandler(Serial, *robot);
-  robot->init_motors();
+  
+  handler->rpiHandshake();
 }
 
 void loop() {
