@@ -35,6 +35,7 @@ Position PurePursuit::findLookaheadPoint(Position currPos, const std::vector<Pos
     }
 
     if (!foundInRing) { // fallback, just returns the last position for now. 
+        std::cout << "findLookaheadPoint: not found in ring" << std::endl;
         if (hasLastPosition) return lastPosition;
         return currPos;
     }

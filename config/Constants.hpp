@@ -2,6 +2,7 @@
 #define CONSTANTS_HPP
 #include <vector>
 #include <termios.h>
+#include <chrono>
 
 struct Position {
     double x, y, theta;
@@ -10,13 +11,16 @@ struct Position {
 const double BULLSEYE_DISTANCE_STOP_LF = 0.1;  // 0.1m 
 const double GOAL_DISTANCE_STOP_LF = 0.1;  // 0.1m 
 
-const float LOOK_AHEAD_DISTANCE = 0.01;
-const float LOOK_AHEAD_TOL = 0.01;
-const float K_CURVE = 0.1;
-const float K_VELOCITY = 0.1;
-const float MAX_LINEAR_VELOCITY = 0.1;
+const float LOOK_AHEAD_DISTANCE = 1000;
+const float LOOK_AHEAD_TOL = 200; // radians
+const float K_CURVE = 1;
+const float K_VELOCITY = 1;
+const float MAX_LINEAR_VELOCITY = 1;
 
 const speed_t SERIAL_BAUD_RATE = B38400;
+
+const int LOOP_HZ = 30;
+const auto PERIOD = std::chrono::duration<double>(1.0 / LOOP_HZ);
 
 // Camera intrinsics
 const std::vector<double> DISTORTION_COEFFICIENTS = {

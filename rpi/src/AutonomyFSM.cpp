@@ -47,6 +47,7 @@ void AutonomyFSM::step() {
 void AutonomyFSM::_transition_state() {
     switch (_state) {
         case INIT:
+            std::cout << "Transitioned to: LF_PRE_RESCUE state" << std::endl;
             _state = LF_PRE_RESCUE;
             break;
         
@@ -54,6 +55,7 @@ void AutonomyFSM::_transition_state() {
             // Only exit this state once we see
             // bounding boxes within BULLSEYE_DISTANCE_STOP_LF
             if (get_magnitude(_closest_bullseye) < BULLSEYE_DISTANCE_STOP_LF) {
+                std::cout << "Transitioned to: RESCUING state" << std::endl;
                 _state = RESCUING;
             }
 
@@ -63,12 +65,14 @@ void AutonomyFSM::_transition_state() {
             // Only exit this state if the rescue controller signals
             // that we're ready to LF again.
             if (_rescued_lego_person) {
+            std::cout << "Transitioned to: LF_POST_RESCUE state" << std::endl;
                 _state = LF_POST_RESCUE;
             }
             break;
         
         case LF_POST_RESCUE:
             if (get_magnitude(_goal) < GOAL_DISTANCE_STOP_LF) {
+                std::cout << "Transitioned to: DROPPING state" << std::endl;
                 _state = DROPPING;
             }
             break;
@@ -76,6 +80,7 @@ void AutonomyFSM::_transition_state() {
         case DROPPING:
             if (_dropped_lego_person) {
                 // Succesfully Finished the challenge!
+                std::cout << "Transitioned to: DONE state" << std::endl;
                 exit(0);  // TODO: do actual cleanup, etc. don't just close
             }
             break;
@@ -89,18 +94,25 @@ void AutonomyFSM::do_lf_pre_rescue() {
         std::chrono::system_clock::now().time_since_epoch()
     ).count(); // seconds with fractional part
 
+    _perception->get_latest_bgr_frame();
     std::vector<Position> lf_points = _perception->get_latest_line_follow_points();
+    std::cout << "do_lf_pre_rescue: Got " << lf_points.size() << " lf_points" << std::endl;
+    std::cout << "do_lf_pre_rescue: lf_points " << lf_points[0].x << ", " << lf_points[0].y << std::endl;
 
     // Run PPS controller
     Position target_point = _pure_pursuit->findLookaheadPoint(Position({0,0,0}), lf_points);
+    std::cout << "do_lf_pre_rescue: target_point " << target_point.x << ", " << target_point.y << std::endl;
     std::pair<float, float> command = _pure_pursuit->getControl(Position({0,0,0}), target_point, lf_points);
+    std::cout << "do_lf_pre_rescue: Got command " << command.first << ", " << command.second << std::endl;
 
     // TODO: send command to Arduino via interfacing library
+    std::cout << "do_lf_pre_rescue: " << std::endl;
     _rescue_controller->step_pursuit(*_serial, command, timestamp);
 
     // Query perception for bullseye, update if exists
     auto bullseye = _perception->get_latest_bullsey_point();
     if (bullseye.has_value()) {
+        std::cout << "Updated closest bullseye to: " << bullseye.value().x << ", " << bullseye.value().y << std::endl;
         _closest_bullseye = bullseye.value();
     }
 }

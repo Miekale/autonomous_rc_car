@@ -6,6 +6,7 @@
 #include <stdexcept>
 #include <iostream>
 #include <chrono>
+#include <cmath>
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Helpers
@@ -24,6 +25,7 @@ static double now_sec()
 Perception::Perception(std::string camera_device, bool video_file)
 {
     if (video_file) {
+        std::cout << "looking for: " << camera_device << std::endl;
         _cap = cv::VideoCapture(camera_device);
     } else {
         _cap = cv::VideoCapture(std::stoi(camera_device));
@@ -217,6 +219,7 @@ cv::Mat Perception::get_latest_bgr_frame()
 {
     std::lock_guard<std::mutex> lock(_mtx);
     _cap.read(_latest_bgr_frame);
+    _has_frame = true;
     
     return _latest_bgr_frame;
 }
@@ -226,17 +229,20 @@ std::vector<Position> Perception::get_latest_line_follow_points()
     cv::Mat frame;
     {
         std::lock_guard<std::mutex> lock(_mtx);
-        if (!_has_frame) return {};
+        if (!_has_frame) {
+            return {};
+        }
         
         frame = _latest_bgr_frame;
     }
 
+    std::cout << "get_latest_line_follow_points: calling detect line" << std::endl;
     auto result = detect_line(frame, HEIGHT_FILTER, /*debug=*/false);
 
     std::vector<Position> positions;
     positions.reserve(result.points_3d.size());
     for (const auto& p : result.points_3d)
-        positions.push_back({ p.x, p.y, p.z });
+        positions.push_back({p.x, p.z, 0});
 
     return positions;
 }

@@ -6,11 +6,11 @@
 #include "Serial.hpp"
 #include "Constants.hpp"
 
+#include <thread>
 #include <iostream>
 
 int main() {
-    Serial mySerial("/dev/ttyACM0", SERIAL_BAUD_RATE);
-
+    Serial serial("/dev/ttyACM0", SERIAL_BAUD_RATE);
     PurePursuit pure_pursuit(
         LOOK_AHEAD_DISTANCE,
         LOOK_AHEAD_TOL,
@@ -19,7 +19,21 @@ int main() {
         MAX_LINEAR_VELOCITY
     );
     RescueController rescue_controller;
-    Perception perception("0");
-    Serial serial(mySerial, SERIAL_BAUD_RATE);
+    Perception perception("/home/utils/new_cam_30fps_1080p.mov", true);
     AutonomyFSM fsm(&pure_pursuit, &perception, &rescue_controller, &serial);
+
+    std::cout << "DONE INI" << std::endl;
+    std::cout << "Stepping FSM..." << std::endl;
+    while (true) {
+        auto start = std::chrono::steady_clock::now();
+
+        fsm.step();
+
+        auto elapsed = std::chrono::steady_clock::now() - start;
+        auto sleep_for = PERIOD - elapsed;
+
+        if (sleep_for > std::chrono::duration<double>(0)) {
+            std::this_thread::sleep_for(sleep_for);
+        }
+    }
 }
