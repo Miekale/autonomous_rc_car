@@ -26,7 +26,7 @@ int main(int argc, char** argv) {
         return 1;
     }
 
-    Perception perception("__ignore__");
+    Perception perception(0);
 
     cv::Mat frame;
     if (!cap.read(frame) || frame.empty()) {
@@ -45,7 +45,7 @@ int main(int argc, char** argv) {
         }
         cv::resize(frame, frame, cv::Size(width, height));
 
-        perception.set_latest_bgr_frame(frame);
+        perception.get_latest_bgr_frame();
         const std::vector<Position> points = perception.get_latest_line_follow_points();
 
         const int topdown_h = 600;

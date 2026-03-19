@@ -1,5 +1,6 @@
 #ifndef CONSTANTS_HPP
 #define CONSTANTS_HPP
+#include <vector>
 
 struct Position {
     double x, y, theta;

@@ -1,8 +1,8 @@
 #include "Perception.hpp"
 
+#include <opencv2/opencv.hpp>
 #include <opencv2/imgproc.hpp>
 #include <opencv2/calib3d.hpp>
-#include <yaml-cpp/yaml.h>
 #include <stdexcept>
 #include <iostream>
 #include <chrono>
@@ -21,25 +21,35 @@ static double now_sec()
 // Constructor / Destructor
 // ─────────────────────────────────────────────────────────────────────────────
 
-Perception::Perception(std::string intrinsics_yaml_path)
+Perception::Perception(int camera_device, bool video_file)
 {
-    // ── Load YAML ────────────────────────────────────────────────────────────
-    YAML::Node data = YAML::LoadFile(intrinsics_yaml_path);
+    if (video_file) {
+        _cap = cv::VideoCapture(camera_device);
+    } else {
+        _cap = cv::VideoCapture(int(camera_device));
+    }
 
-    // Intrinsic matrix  (3×3, row-major in YAML)
-    auto raw_K = data["INTRINSIC_MATRIX"].as<std::vector<std::vector<double>>>();
-    _camera_matrix = cv::Mat(3, 3, CV_64F);
-    for (int r = 0; r < 3; ++r)
-        for (int c = 0; c < 3; ++c)
-            _camera_matrix.at<double>(r, c) = raw_K[r][c];
+    if (!_cap.isOpened()) {
+        std::cerr << "Failed to open camera\n";
+    }
+
+    // Intrinsic matrix  
+    // Flatten row-major into a 1D vector
+    std::vector<double> flat;
+    for (const auto& row : INTRINSIC_MATRIX)
+        flat.insert(flat.end(), row.begin(), row.end());
+
+    _camera_matrix = cv::Mat(3, 3, CV_64F, flat.data()).clone();
 
     // Distortion coefficients (1×N)
-    auto raw_D = data["DISTORTION_COEFFICIENTS"].as<std::vector<double>>();
-    _dist_coeffs = cv::Mat(raw_D, /*copyData=*/true).reshape(1, 1); // 1×N
+    std::vector<double> dist_flat(DISTORTION_COEFFICIENTS.begin(), DISTORTION_COEFFICIENTS.end());
+    _dist_coeffs = cv::Mat(1, dist_flat.size(), CV_64F, dist_flat.data()).clone();
 
     // Mounting height (metres above the floor plane)
-    if (data["MOUNTING_HEIGHT"])
-        _mounting_height = data["MOUNTING_HEIGHT"].as<double>();
+    _mounting_height = MOUNTING_HEIGHT;
+
+    // Latest BGR frame
+    _latest_bgr_frame = cv::Mat();
 
     // ── Fixed HSV thresholds ─────────────────────────────────────────────────
     // Part A: "wrap-around" red  (174–179)
@@ -212,11 +222,12 @@ Perception::detect_line(const cv::Mat& bgr_image, int height_filter, bool debug)
 }
 
 
-void Perception::set_latest_bgr_frame(const cv::Mat& bgr_frame)
+cv::Mat Perception::get_latest_bgr_frame()
 {
     std::lock_guard<std::mutex> lock(_mtx);
-    _latest_bgr_frame = bgr_frame.clone();
-    _has_frame = true;
+    _latest_bgr_frame =_cap.read(_latest_bgr_frame);
+    
+    return _latest_bgr_frame;
 }
 
 std::vector<Position> Perception::get_latest_line_follow_points()
@@ -225,10 +236,10 @@ std::vector<Position> Perception::get_latest_line_follow_points()
     {
         std::lock_guard<std::mutex> lock(_mtx);
         if (!_has_frame) return {};
-        frame = _latest_bgr_frame.clone();
+        
+        frame = _latest_bgr_frame;
     }
 
-    constexpr int HEIGHT_FILTER = 0; // adjust as needed
     auto result = detect_line(frame, HEIGHT_FILTER, /*debug=*/false);
 
     std::vector<Position> positions;
@@ -238,6 +249,60 @@ std::vector<Position> Perception::get_latest_line_follow_points()
 
     return positions;
 }
+
+// cv::Mat makeDebugView(
+//     const cv::Mat& frame_in,
+//     const cv::Mat& mask,
+//     const cv::Mat& ridge,
+//     const std::vector<cv::Point3f>& points_3d,
+//     int w, int h)
+// {
+//     // Resize frame to half resolution
+//     cv::Mat frame;
+//     cv::resize(frame_in, frame, {w / 2, h / 2}, 0, 0, cv::INTER_NEAREST);
+//     w = frame.cols;
+//     h = frame.rows;
+
+//     // Normalize single-channel images to BGR for stacking
+//     cv::Mat mask_bgr, ridge_bgr;
+//     cv::cvtColor(mask,  mask_bgr,  cv::COLOR_GRAY2BGR);
+//     cv::cvtColor(ridge, ridge_bgr, cv::COLOR_GRAY2BGR);
+
+//     cv::Mat plot_bgr = renderXYPlot(points_3d,
+//         /*xlim=*/{-1000.f, 1000.f},
+//         /*ylim=*/{    0.f, 2000.f},
+//         /*x_index=*/0,
+//         /*y_index=*/2);
+
+//     // Resize all panels to match frame size
+//     auto fit = [&](const cv::Mat& img) {
+//         cv::Mat out;
+//         cv::resize(img, out, {w, h}, 0, 0, cv::INTER_NEAREST);
+//         return out;
+//     };
+
+//     cv::Mat top, bottom, grid;
+//     cv::hconcat(std::vector<cv::Mat>{frame,          fit(mask_bgr)},  top);
+//     cv::hconcat(std::vector<cv::Mat>{fit(ridge_bgr), fit(plot_bgr)},  bottom);
+//     cv::vconcat(std::vector<cv::Mat>{top, bottom}, grid);
+
+//     // Labels
+//     const std::vector<std::string> labels = {
+//         "Frame", "Mask", "Ridge", "3D Points (XZ)"
+//     };
+//     const std::vector<cv::Point> positions = {
+//         {10,      30},
+//         {w + 10,  30},
+//         {10,      h + 30},
+//         {w + 10,  h + 30}
+//     };
+//     for (size_t i = 0; i < labels.size(); ++i) {
+//         cv::putText(grid, labels[i], positions[i],
+//             cv::FONT_HERSHEY_SIMPLEX, 0.8, {0, 255, 0}, 2, cv::LINE_AA);
+//     }
+
+//     return grid;
+// }
 
 std::optional<Position> Perception::get_latest_bullsey_point()
 {
