@@ -87,7 +87,8 @@ static cv::Mat make_debug_grid(
     for (size_t i = 0; i < labels.size(); ++i)
         cv::putText(grid, labels[i], positions[i],
             cv::FONT_HERSHEY_SIMPLEX, 0.8, cv::Scalar(0, 255, 0), 2, cv::LINE_AA);
-
+    
+    cv::resize(grid, grid, {1920, 1080}, 0, 0, cv::INTER_NEAREST);
     return grid;
 }
 

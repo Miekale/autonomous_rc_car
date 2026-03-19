@@ -53,12 +53,12 @@ Perception::Perception(std::string camera_device, bool video_file)
 
     // ── Fixed HSV thresholds ─────────────────────────────────────────────────
     // Part A: "wrap-around" red  (174–179)
-    _lower_A = cv::Scalar(174, 100, 100);
+    _lower_A = cv::Scalar(174, 150, 100);
     _upper_A = cv::Scalar(179, 255, 255);
 
     // Part B: "orange" red  (0–14)
-    _lower_B = cv::Scalar(0, 75, 100);
-    _upper_B = cv::Scalar(14, 255, 255);
+    _lower_B = cv::Scalar(0, 150, 100);
+    _upper_B = cv::Scalar(10, 255, 255);
 }
 
 Perception::~Perception() {}
@@ -225,7 +225,7 @@ Perception::detect_line(const cv::Mat& bgr_image, int height_filter, bool debug)
 cv::Mat Perception::get_latest_bgr_frame()
 {
     std::lock_guard<std::mutex> lock(_mtx);
-    _latest_bgr_frame =_cap.read(_latest_bgr_frame);
+    _cap.read(_latest_bgr_frame);
     
     return _latest_bgr_frame;
 }
