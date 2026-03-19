@@ -26,10 +26,10 @@ public:
     ~Serial();
     void closePort();
     int writeData(const std::string& data);
-    int writeData(const uint8_t command_id, const std::vector<float>& data);
+    int writeData(const uint8_t command_id, const std::vector<float>& data, double timestamp);
     int readData(char* buffer, size_t size);
     bool waitForAck(uint32_t timeout_ms);
-    bool sendWithRetry(uint8_t cmd, const std::vector<float>& data);
+    bool sendWithRetry(uint8_t cmd, const std::vector<float>& data, double timestamp);
     bool isOpen() const;
     void handshake();
 
