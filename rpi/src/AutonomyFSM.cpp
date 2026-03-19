@@ -107,7 +107,10 @@ void AutonomyFSM::do_lf_pre_rescue() {
 
 void AutonomyFSM::do_rescuing() {
     // Step the Rescue state machine
-    _rescued_lego_person = _rescue_controller->step_grab(*_serial);
+     double timestamp = std::chrono::duration<double>(
+        std::chrono::system_clock::now().time_since_epoch()
+    ).count(); // seconds with fractional part
+    _rescued_lego_person = _rescue_controller->step_grab(*_serial, timestamp);
 }
 
 void AutonomyFSM::do_lf_post_rescue() {
