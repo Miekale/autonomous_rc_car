@@ -223,6 +223,7 @@ cv::Mat Perception::make_debug_grid(const cv::Mat& frame,
                                     const cv::Mat& ridge,
                                     const std::vector<cv::Point3d>& pts3d) const
 {
+    std::cout << "making debug grid" << std::endl;
     const int w = frame.cols;
     const int h = frame.rows;
 
@@ -263,7 +264,7 @@ cv::Mat Perception::make_debug_grid(const cv::Mat& frame,
 // ─────────────────────────────────────────────────────────────────────────────
 
 Perception::DetectionResult 
-Perception::detect_line(const cv::Mat& bgr_image, int height_filter, bool debug) const
+Perception::detect_line(const cv::Mat& bgr_image, int height_filter, bool debug)
 {
     double t0 = now_sec();
 
@@ -288,6 +289,11 @@ Perception::detect_line(const cv::Mat& bgr_image, int height_filter, bool debug)
     if (_show_debug_plots) {
         cv::Mat grid = make_debug_grid(bgr_image, mask, ridge, pts3d);
         cv::imshow("Perception Debug", grid);
+
+        int key = cv::waitKey(1);
+        if (key == 'q' || key == 27) {
+            _show_debug_plots = false;
+        };   // q or ESC
     }
 
     return { mask, ridge, pts2d, pts3d };

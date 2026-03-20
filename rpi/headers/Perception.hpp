@@ -34,7 +34,7 @@ public:
     // ── Full pipeline (thread-safe, works on any image) ───────────────────────
     DetectionResult detect_line(const cv::Mat& bgr_image,
                                 int            height_filter,
-                                bool           debug = false) const;
+                                bool           debug = false);
     void set_debug_plots_enabled(bool enabled);
 
     // ── FSM / controller interface ────────────────────────────────────────────
@@ -75,8 +75,8 @@ private:
     std::vector<cv::Point3d> points2d_to_3d (const std::vector<cv::Point2f>& pts2d) const;
     cv::Mat                  render_xz_plot (const std::vector<cv::Point3d>& pts3d,
                                              int w, int h,
-                                             float x_min = -1000.f, float x_max = 1000.f,
-                                             float z_min = 0.f, float z_max = 2000.f) const;
+                                             float x_min = -2000.f, float x_max = 2000.f,
+                                             float z_min = 0.f, float z_max = 4000.f) const;
     cv::Mat                  make_debug_grid(const cv::Mat& frame,
                                              const cv::Mat& mask,
                                              const cv::Mat& ridge,

@@ -2,6 +2,8 @@
 #define ROBOT_CONTROLLER_HPP
 
 #include <Servo.h>
+#include <Controls.hpp>
+#include <LinAlg.hpp>
 
 class RobotController {
 private:

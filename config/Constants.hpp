@@ -15,7 +15,7 @@ const float LOOK_AHEAD_DISTANCE = 1000;
 const float LOOK_AHEAD_TOL = 200; // radians
 const float K_CURVE = 1;
 const float K_VELOCITY = 1;
-const float MAX_LINEAR_VELOCITY = 1;
+const float MAX_LINEAR_VELOCITY = 0.2;
 
 const speed_t SERIAL_BAUD_RATE = B38400;
 
