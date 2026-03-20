@@ -147,8 +147,8 @@ FloatPair Controls::forward_kinematics(float w_r, float w_l) {
 
 FloatPair Controls::inverse_kinematics(float v, float w) {
     // Implements IK mapping from local-frame linear/angular velocities -> wheel rot speed
-    float w_r = 1 / WHEEL_RADIUS_MM * v + 1 / WHEEL_RADIUS_MM * LENGTH_WHEEL_TO_WHEEL / 2 * w; 
-    float w_l = 1 / WHEEL_RADIUS_MM * v - 1 / WHEEL_RADIUS_MM * LENGTH_WHEEL_TO_WHEEL / 2 * w; 
+    float w_r = 1 / WHEEL_RADIUS_MM * v + 1 / WHEEL_RADIUS_MM * LENGTH_WHEEL_TO_WHEEL / 2 * w*4; 
+    float w_l = 1 / WHEEL_RADIUS_MM * v - 1 / WHEEL_RADIUS_MM * LENGTH_WHEEL_TO_WHEEL / 2 * w*4; 
 
     return FloatPair{w_r, w_l};
 }
