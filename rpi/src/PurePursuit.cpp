@@ -20,7 +20,7 @@ Position PurePursuit::findLookaheadPoint(Position currPos, const std::vector<Pos
         if (std::abs(dst - lookAheadDist) <= lookAheadTol) {
             
             // find relative angle (in global coords) and normalize
-            float angleToPoint = std::atan2(dy, dx);
+            float angleToPoint = std::atan2(dy , dx);
             float alpha = angleToPoint - currPos.theta;
             alpha = std::atan2(std::sin(alpha), std::cos(alpha));
 
@@ -50,7 +50,12 @@ std::pair<float, float> PurePursuit::getControl(Position currPos, Position targe
     // transform target point to locale coords (robot faces down the x)
     float dx = target.x - currPos.x;
     float dy = target.y - currPos.y;
-    float turn_error = std::atan2(dx, dy);
+
+    if (abs(dy) < 0.0001) {
+        return {0.0, 0.0};
+    }
+
+    float turn_error = std::atan2(dy, dx);
     float distance = std::sqrt(std::pow(dx, 2) + std::pow(dy, 2));
 
     if (distance < 10) {
@@ -65,7 +70,7 @@ std::pair<float, float> PurePursuit::getControl(Position currPos, Position targe
 
     float velocity = maxLinearVel / (1 + K_velocity * abs(scaled_curvature)); // tune velocity based on curvature
     float turn_rel_speed = WHEEL_TO_WHEEL_DISTANCE * std::sin(turn_error) * velocity / LOOK_AHEAD_DISTANCE;
-    float angularVel = 2 * turn_rel_speed / WHEEL_TO_WHEEL_DISTANCE;
+    float angularVel = 2 * turn_rel_speed / WHEEL_TO_WHEEL_DISTANCE * K_VELOCITY;
 
     return {velocity, angularVel};
 }

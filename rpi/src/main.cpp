@@ -19,22 +19,22 @@ int main() {
         MAX_LINEAR_VELOCITY
     );
     RescueController rescue_controller;
-    Perception perception("0", false, true);
+    Perception perception("0", false, false);
     // Perception perception("/home/utils/new_cam_30fps_1080p.mov", true, true);
     AutonomyFSM fsm(&pure_pursuit, &perception, &rescue_controller, &serial);
 
     std::cout << "DONE INI" << std::endl;
     std::cout << "Stepping FSM..." << std::endl;
     while (true) {
-        auto start = std::chrono::steady_clock::now();
+        // auto start = std::chrono::steady_clock::now();
 
         fsm.step();
 
-        auto elapsed = std::chrono::steady_clock::now() - start;
-        auto sleep_for = PERIOD - elapsed;
+        // auto elapsed = std::chrono::steady_clock::now() - start;
+        // auto sleep_for = PERIOD - elapsed;
 
-        if (sleep_for > std::chrono::duration<double>(0)) {
-            std::this_thread::sleep_for(sleep_for);
-        }
+        // if (sleep_for > std::chrono::duration<double>(0)) {
+          //  std::this_thread::sleep_for(sleep_for);
+        //}
     }
 }

@@ -102,12 +102,12 @@ void AutonomyFSM::do_lf_pre_rescue() {
     }
 
     // Run PPS controller
+    // TODO: the heading angle in world coords is always 0
     Position target_point = _pure_pursuit->findLookaheadPoint(Position({0,0,0}), lf_points);
     std::cout << "do_lf_pre_rescue: target_point " << target_point.x << ", " << target_point.y << std::endl;
     std::pair<float, float> command = _pure_pursuit->getControl(Position({0,0,0}), target_point, lf_points);
     std::cout << "do_lf_pre_rescue: Got command " << command.first << ", " << command.second << std::endl;
 
-    // TODO: send command to Arduino via interfacing library
     std::cout << "do_lf_pre_rescue: " << std::endl;
     _rescue_controller->step_pursuit(*_serial, command, timestamp);
     _serial->readAndPrint();

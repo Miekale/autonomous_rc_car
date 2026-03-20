@@ -39,16 +39,16 @@ void RobotController::set_m_l_speed(float percent) {
       analogWrite(_m_L_low_pin, 0);
       
     } else if (percent >= 0) {
-        analogWrite(_m_L_high_pin, percent * 205 + 50);  // PWM 255 is max, 0 is min
+        analogWrite(_m_L_high_pin, percent * 185 + 70);  // PWM 255 is max, 0 is min
         analogWrite(_m_L_low_pin, 0);
     }
     else {
-        analogWrite(_m_L_low_pin, abs(percent) * 205 + 50);
+        analogWrite(_m_L_low_pin, abs(percent) * 185 + 70);
         analogWrite(_m_L_high_pin, 0);
     }
 
     Serial.print("LEFT: ");
-    Serial.println(abs(percent) * 205 + 50);
+    Serial.println(abs(percent) * 185 + 70);
 }
 
 void RobotController::set_m_r_speed(float percent) {
@@ -61,16 +61,16 @@ void RobotController::set_m_r_speed(float percent) {
       analogWrite(_m_R_low_pin, 0);
     }
     else if (percent >= 0) {
-        analogWrite(_m_R_high_pin, percent * 205 + 50);  // PWM 255 is max, 0 is min
+        analogWrite(_m_R_high_pin, percent * 185 + 70);  // PWM 255 is max, 0 is min
         analogWrite(_m_R_low_pin, 0);
     }
     else {
-        analogWrite(_m_R_low_pin, abs(percent) * 205 + 50);
+        analogWrite(_m_R_low_pin, abs(percent) * 185 + 70);
         analogWrite(_m_R_high_pin, 0);
     }
 
     Serial.print("RIGHT: ");
-    Serial.println(abs(percent) * 205 + 50);
+    Serial.println(abs(percent) * 185 + 70);
 }
 
 void RobotController::execute_v_w_command(float v, float w) {
