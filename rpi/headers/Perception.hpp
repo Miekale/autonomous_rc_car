@@ -65,8 +65,8 @@ private:
     const cv::Scalar _lower_B = cv::Scalar(0, 100, 200);
     const cv::Scalar _upper_B = cv::Scalar(10, 255, 255);
 
-    const cv::Scalar _lower_blue = cv::Scalar(110, 125, 70);
-    const cv::Scalar _upper_blue = cv::Scalar(120, 175, 255);
+    const cv::Scalar _lower_blue = cv::Scalar(100, 120, 70);
+    const cv::Scalar _upper_blue = cv::Scalar(145, 185, 255);
 
 
     // ── Latest frame (written by set_latest_bgr_frame) ───────────────────────
@@ -92,12 +92,7 @@ private:
                                              const cv::Mat& mask,
                                              const cv::Mat& ridge,
                                              const std::vector<cv::Point3d>& pts3d) const;
-    cv::Mat                  make_debug_grid(const cv::Mat& frame,
-                                             const cv::Mat& mask,
-                                             const cv::Mat& ridge,
-                                             const std::vector<cv::Point3d>& pts3d,
-                                             const cv::Mat& blue_mask,      
-                                             const cv::Mat& blue_ridge) const; 
+    
 
     cv::Point2f getBlueCenter(std::vector<cv::Point2f>& blue_pts2d/*, vector<cv::Point3d>& blue_pts3d*/) const;
 
