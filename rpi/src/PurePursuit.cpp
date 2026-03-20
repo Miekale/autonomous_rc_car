@@ -50,7 +50,12 @@ std::pair<float, float> PurePursuit::getControl(Position currPos, Position targe
     // transform target point to locale coords (robot faces down the x)
     float dx = target.x - currPos.x;
     float dy = target.y - currPos.y;
+    float turn_error = std::atan2(dx, dy);
     float distance = std::sqrt(std::pow(dx, 2) + std::pow(dy, 2));
+
+    if (distance < 10) {
+        return {0.0, 0.0};
+    }
     
     Position localeTarget = rotatePosition(dx, dy, -currPos.theta);
 
@@ -59,7 +64,8 @@ std::pair<float, float> PurePursuit::getControl(Position currPos, Position targe
     std::cout << "getControl: " << "scaled_curvature: " << scaled_curvature << std::endl;
 
     float velocity = maxLinearVel / (1 + K_velocity * abs(scaled_curvature)); // tune velocity based on curvature
-    float angularVel = velocity * scaled_curvature;
+    float turn_rel_speed = WHEEL_TO_WHEEL_DISTANCE * std::sin(turn_error) * velocity / LOOK_AHEAD_DISTANCE;
+    float angularVel = 2 * turn_rel_speed / WHEEL_TO_WHEEL_DISTANCE;
 
     return {velocity, angularVel};
 }

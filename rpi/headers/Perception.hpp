@@ -35,6 +35,7 @@ public:
     cv::Mat get_latest_bgr_frame();
 
     // ── Full pipeline (thread-safe, works on any image) ───────────────────────
+    std::vector<cv::Vec3f> detect_bullseye();
     DetectionResult detect_line(const cv::Mat& bgr_image,
                                 int            height_filter,
                                 bool           debug = false);

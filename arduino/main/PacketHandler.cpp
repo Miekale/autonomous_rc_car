@@ -62,7 +62,7 @@ void PacketHandler::dispatch(uint8_t* data, uint8_t len) {
     uint8_t cmdID = data[0];
     switch (cmdID) {
         case 0x00: { // Pure Pursuit
-            if (len != 17) return; // change back to 9 when we remove the timestamp stuff
+            if (len != 17) return; // data package size - change back to 9 when we remove the timestamp stuff
             float v, w;
             memcpy(&v, &data[1], 4);
             memcpy(&w, &data[5], 4);

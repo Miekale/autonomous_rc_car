@@ -19,7 +19,7 @@ int main() {
         MAX_LINEAR_VELOCITY
     );
     RescueController rescue_controller;
-    Perception perception("/home/utils/new_cam_30fps_1080p.mov", true, true);
+    Perception perception("0", false, false);
     AutonomyFSM fsm(&pure_pursuit, &perception, &rescue_controller, &serial);
 
     std::cout << "DONE INI" << std::endl;

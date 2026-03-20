@@ -10,8 +10,8 @@ using linalg::FloatPair;
 class Controls {
 public:
 
-    const float WHEEL_RADIUS_MM = 62.0 / 2;
-    const float LENGTH_WHEEL_TO_WHEEL = 160.0;
+    static const float WHEEL_RADIUS_MM = 62.0 / 2;
+    static const float LENGTH_WHEEL_TO_WHEEL = 160.0;
 
     // 0.02 comes from estimated 50hz
     const Mat3 A = Mat3(
@@ -73,7 +73,7 @@ public:
     StatePair correct_step(Vec3 z_sensor, Mat3 H, Mat3 R, Vec3 pred_state, Mat3 pred_P);
 
     static FloatPair forward_kinematics(float w_r, float w_l);
-    FloatPair inverse_kinematics(float v, float w);
+    static FloatPair inverse_kinematics(float v, float w);
 };
 
 #endif

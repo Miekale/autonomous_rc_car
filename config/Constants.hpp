@@ -8,6 +8,8 @@ struct Position {
     double x, y, theta;
 };
 
+const float WHEEL_TO_WHEEL_DISTANCE = 182; // mm
+
 const double BULLSEYE_DISTANCE_STOP_LF = 100;
 const double GOAL_DISTANCE_STOP_LF = 100;
 

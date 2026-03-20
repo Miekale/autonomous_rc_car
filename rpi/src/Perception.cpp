@@ -262,6 +262,25 @@ cv::Mat Perception::make_debug_grid(const cv::Mat& frame,
 // ─────────────────────────────────────────────────────────────────────────────
 // Public pipeline – detect_line
 // ─────────────────────────────────────────────────────────────────────────────
+std::vector<cv::Vec3f> Perception::detect_bullseye()
+{
+    std::vector<cv::Vec3f> circles;
+
+    // cv::HoughCircles(
+    //     _latest_detection.ridge,
+    //     circles,
+    //     cv::HOUGH_GRADIENT,
+    //     1,                            // dp
+    //     _latest_bgr_frame.rows / 2,  // minDist between centres
+    //     100,                          // param1: Canny threshold
+    //     10,                          // param2: accumulator threshold (lower = more detections)
+    //     50,                   // minRadius
+    //     100               // maxRadius
+    // );
+    
+    return circles;
+}
+
 
 Perception::DetectionResult 
 Perception::detect_line(const cv::Mat& bgr_image, int height_filter, bool debug)

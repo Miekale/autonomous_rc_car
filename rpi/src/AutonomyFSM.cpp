@@ -97,7 +97,9 @@ void AutonomyFSM::do_lf_pre_rescue() {
     _perception->get_latest_bgr_frame();
     std::vector<Position> lf_points = _perception->get_latest_line_follow_points();
     std::cout << "do_lf_pre_rescue: Got " << lf_points.size() << " lf_points" << std::endl;
-    std::cout << "do_lf_pre_rescue: lf_points " << lf_points[0].x << ", " << lf_points[0].y << std::endl;
+    if (lf_points.size() > 1){
+        std::cout << "do_lf_pre_rescue: lf_points " << lf_points[0].x << ", " << lf_points[0].y << std::endl;
+    }
 
     // Run PPS controller
     Position target_point = _pure_pursuit->findLookaheadPoint(Position({0,0,0}), lf_points);

@@ -11,5 +11,6 @@ bool RescueController::step_drop(Serial& serial, double timestamp) {
 }
 
 bool RescueController::step_pursuit(Serial& serial, const std::pair<float, float>& ppdata, double timestamp) {
+    std::cout << "sending..." << std::endl;
     return serial.writeData(CMD_PURE_PURSUIT, {ppdata.first, ppdata.second}, timestamp);
 }

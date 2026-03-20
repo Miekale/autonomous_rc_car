@@ -28,13 +28,13 @@ void RobotController::set_m_l_speed(float percent) {
         Serial.println("SPEED (PERCENT) MUST BE BETWEEN 0-1");
         return;
     }
-
+    
     if (percent >= 0) {
-        analogWrite(_m_L_high_pin, percent * 255);  // PWM 255 is max, 0 is min
+        analogWrite(_m_L_high_pin, percent * 155 + 100);  // PWM 255 is max, 0 is min
         analogWrite(_m_L_low_pin, 0);
     }
     else {
-        analogWrite(_m_L_low_pin, abs(percent) * 255);
+        analogWrite(_m_L_low_pin, abs(percent) * 155 + 100);
         analogWrite(_m_L_high_pin, 0);
     }
 
@@ -47,13 +47,13 @@ void RobotController::set_m_r_speed(float percent) {
         Serial.println("SPEED (PERCENT) MUST BE BETWEEN 0-1");
         return;
     }
-
+    
     if (percent >= 0) {
-        analogWrite(_m_R_high_pin, percent * 255);  // PWM 255 is max, 0 is min
+        analogWrite(_m_R_high_pin, percent * 115 + 100);  // PWM 255 is max, 0 is min
         analogWrite(_m_R_low_pin, 0);
     }
     else {
-        analogWrite(_m_R_low_pin, abs(percent) * 255);
+        analogWrite(_m_R_low_pin, abs(percent) * 115 + 100);
         analogWrite(_m_R_high_pin, 0);
     }
 
@@ -67,16 +67,21 @@ void RobotController::execute_v_w_command(float v, float w) {
     // If v > 0 then start running both
     float vl = 0;
     float vr = 0;
+    Serial.print("v: ");
+    Serial.print(v);
+    Serial.print("w: ");
+    Serial.print(w);
 
     linalg::FloatPair pair = Controls::inverse_kinematics(v, w);
 
-    vl = pair.first / 0.2; // TODO put the 0.2 into a constants file, it's the max linear speed for now
-    vr = pair.second / 0.2;
+    // angular velocities
+    vl = pair.first / max_angular_velocity;
+    vr = pair.second / max_angular_velocity;
 
-    Serial.print("vl: ")
-    Serial.print(vl)
-    Serial.print("vr: ")
-    Serial.println(vr)
+    Serial.print("vl: ");
+    Serial.print(vl);
+    Serial.print("vr: ");
+    Serial.println(vr);
 
     set_m_l_speed(vl);
     set_m_r_speed(vr);
