@@ -91,6 +91,19 @@ cv::Mat Perception::get_blue_mask(const cv::Mat& bgr_image) const
     return mask;
 }
 
+cv::Mat Perception::get_blue_mask(const cv::Mat& bgr_image) const
+{
+    cv::Mat blurred;
+    cv::GaussianBlur(bgr_image, blurred, cv::Size(5, 5), 0);
+
+    cv::Mat hsv;
+    cv::cvtColor(blurred, hsv, cv::COLOR_BGR2HSV);
+
+    cv::Mat mask;
+    cv::inRange(hsv, _lower_blue, _upper_blue, mask);
+    return mask;
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Step 2 – Morphological cleanup
 // ─────────────────────────────────────────────────────────────────────────────
@@ -294,17 +307,17 @@ Perception::detect_line(const cv::Mat& bgr_image, int height_filter, bool debug)
     auto pts2d    = extract_points(ridge);             double t4 = now_sec();
     auto pts3d    = points2d_to_3d(pts2d);             double t5 = now_sec();
 
-    // if (debug)
-    // {
-    //     std::cout << "=======================\n"
-    //               << "Detection took   " << (t5 - t0) << " s\n"
-    //               << "Red mask         " << (t1 - t0) << " s\n"
-    //               << "Clean mask       " << (t2 - t1) << " s\n"
-    //               << "Extract ridge    " << (t3 - t2) << " s\n"
-    //               << "Extract points   " << (t4 - t3) << " s\n"
-    //               << "Points to 3-D    " << (t5 - t4) << " s\n"
-    //               << "=======================\n";
-    // }
+    if (debug)
+    {
+        std::cout << "=======================\n"
+                  << "Detection took   " << (t5 - t0) << " s\n"
+                  << "Red mask         " << (t1 - t0) << " s\n"
+                  << "Clean mask       " << (t2 - t1) << " s\n"
+                  << "Extract ridge    " << (t3 - t2) << " s\n"
+                  << "Extract points   " << (t4 - t3) << " s\n"
+                  << "Points to 3-D    " << (t5 - t4) << " s\n"
+                  << "=======================\n";
+    }
 
     if (_show_debug_plots) {
         cv::Mat grid = make_debug_grid(bgr_image, mask, ridge, pts3d);
