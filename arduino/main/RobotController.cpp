@@ -71,24 +71,24 @@ void RobotController::execute_v_w_command(float v, float w) {
     // Stupid Implementation for now
 
     // If v > 0 then start running both
-    float vl = 0;
-    float vr = 0;
+    float wl = 0;
+    float wr = 0;
     Serial.print("v: ");
     Serial.print(v);
     Serial.print(" w: ");
     Serial.println(w);
 
-    linalg::FloatPair pair = Controls::inverse_kinematics(v, w);
+    linalg::FloatPair pair = Controls::inverse_kinematics(v, -w);
 
     // angular velocities
-    vl = pair.first / max_angular_velocity;
-    vr = pair.second / max_angular_velocity;
+    wl = pair.second / max_angular_velocity;
+    wr = pair.first / max_angular_velocity;
 
     Serial.print("vl: ");
-    Serial.print(vl);
+    Serial.print(wl);
     Serial.print(" vr: ");
-    Serial.println(vr);
+    Serial.println(wr);
 
-    set_m_l_speed(vl);
-    set_m_r_speed(vr * 0.8);
+    set_m_l_speed(wl);
+    set_m_r_speed(wr);
 }

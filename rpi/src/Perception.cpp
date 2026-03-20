@@ -30,6 +30,8 @@ Perception::Perception(std::string camera_device, bool video_file, bool show_deb
         _cap = cv::VideoCapture(camera_device);
     } else {
         _cap = cv::VideoCapture(std::stoi(camera_device));
+        _cap.set(cv::CAP_PROP_FRAME_HEIGHT, 1080);
+        _cap.set(cv::CAP_PROP_FRAME_WIDTH, 1920);
     }
 
     if (!_cap.isOpened()) {

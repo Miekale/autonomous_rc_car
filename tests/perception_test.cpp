@@ -116,7 +116,7 @@ int main(int argc, char** argv)
 
     bool debug = true;
 
-    while (true)s
+    while (true)
     {
         auto frame = perception.get_latest_bgr_frame();
 
