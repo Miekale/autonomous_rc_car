@@ -14,7 +14,7 @@ Serial::Serial(const std::string& device, speed_t baudrate)
 
 bool Serial::openPort(){
     // These flags say that the line will be read/write and doensn't own the process
-    fd = open(device.c_str(), O_RDWR | O_NOCTTY | O_SYNC);
+    fd = open(device.c_str(), O_RDWR | O_NOCTTY | O_NONBLOCK);
     if (fd < 0) {
         perror("open");
         return false;
