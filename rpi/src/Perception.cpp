@@ -376,7 +376,7 @@ std::vector<Position> Perception::get_latest_line_follow_points_2d()
     std::vector<Position> positions;
     positions.reserve(result.points_2d.size());
     for (const auto& p : result.points_2d)
-        positions.push_back({p.x - 1920/2, 1080 - p.y, 0});
+        positions.push_back({1080 - p.y, p.x - 1920/2, 0});
 
     return positions;
 }

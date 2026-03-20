@@ -17,7 +17,7 @@ Serial::Serial(const std::string& device, speed_t baudrate)
 
 bool Serial::openPort(){
     // These flags say that the line will be read/write and doensn't own the process
-    fd = open(device.c_str(), O_RDWR | O_NOCTTY | O_SYNC);
+    fd = open(device.c_str(), O_RDWR | O_NOCTTY | O_NONBLOCK);
     if (fd < 0) {
         perror("open");
         return false;
@@ -124,6 +124,7 @@ int Serial::writeData(const uint8_t command_id, const std::vector<float>& data, 
     // checksum of everything
     packet.push_back(getCheckSum(packet));
 
+    std::cout << "writeData: before write() return" << std::endl;
     return write(fd, packet.data(), packet.size());
 }
 
