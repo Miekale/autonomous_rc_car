@@ -15,6 +15,22 @@
 
 class Perception {
 public:
+
+    struct Segment {
+        cv::Point2f p1, p2;
+        cv::Point2f dir;
+        float len;
+        int min_index;
+        int max_index;
+    };
+
+    struct EndPoint {
+        cv::Point2f junction;
+        Segment line_straight;
+        Segment line_left;
+        Segment line_right;
+    };
+
     // Bundles all outputs from the detection pipeline
     struct DetectionResult {
         cv::Mat             mask;       // binary red mask (after morphology)
@@ -32,7 +48,7 @@ public:
     // ── Full pipeline (thread-safe, works on any image) ───────────────────────
     DetectionResult detect_line(const cv::Mat& bgr_image,
                                 int            height_filter,
-                                bool           debug = false) const;
+                                bool           debug = false);
 
     // ── FSM / controller interface ────────────────────────────────────────────
     std::vector<Position>   get_latest_line_follow_points();
@@ -47,6 +63,8 @@ private:
 
     // ── Line follow height filter ─────────────────────────────────────────────
     double HEIGHT_FILTER = 0;
+
+    int MIN_POINTS = 3; // min points for a cluster to be considered a valid line
 
     // ── HSV thresholds ────────────────────────────────────────────────────────
     // Part A: "red" wrap-around (174–179)
@@ -70,6 +88,19 @@ private:
     cv::Mat                  extract_ridge  (const cv::Mat& mask, int height_filter) const;
     std::vector<cv::Point2f> extract_points (const cv::Mat& ridge)      const;
     std::vector<cv::Point3d> points2d_to_3d (const std::vector<cv::Point2f>& pts2d) const;
+
+    // -- END POINT YALLc
+    std::vector<float> getRidgeAngles(const cv::Mat& ridge, const std::vector<cv::Point2f>& points_2d) const;
+    std::vector<std::vector<cv::Point2f>> clusterRidgePoints(const std::vector<cv::Point2f>& points_2d, const std::vector<float>& angles) const;
+    Segment fitSegmentToCluster(const std::vector<cv::Point2f>& cluster) const;
+    cv::Point2f findIntersection(const Segment& s1, const Segment& s2) const;
+    std::vector<Segment> getBestSegments(const std::vector<std::vector<cv::Point2f>>& clusters) const;
+    bool isTJunction(const Segment& bar, const Segment& stem, const cv::Point2f& junction) const;
+    EndPoint buildEndPoint(const Segment& bar, const Segment& stem, const cv::Point2f& junction) const;
+    std::optional<EndPoint> getEndpoint(const cv::Mat& ridge, const std::vector<cv::Point2f>& points_2d) const;
+    bool shouldMerge(const Segment& s1, const Segment& s2) const;
+
 };
+
 
 #endif // PERCEPTION_HPP
