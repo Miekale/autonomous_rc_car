@@ -108,8 +108,8 @@ void AutonomyFSM::do_lf_pre_rescue() {
     std::pair<float, float> command = _pure_pursuit->getControl(Position({0,0,0}), target_point, lf_points);
     std::cout << "do_lf_pre_rescue: Got command " << command.first << ", " << command.second << std::endl;
 
-    std::cout << "do_lf_pre_rescue: " << std::endl;
     _rescue_controller->step_pursuit(*_serial, command, timestamp);
+    std::cout <<"do_lf_pre_rescue: stepped pursuit" << std::endl;
 
     // Query perception for bullseye, update if exists
     std::optional<Position> bullseye = _perception->get_latest_bullsey_point();
@@ -119,7 +119,6 @@ void AutonomyFSM::do_lf_pre_rescue() {
         std::cout << "Updated closest bullseye to: " << bullseye.value().x << ", " << bullseye.value().y << std::endl;
         _closest_bullseye.theta = bullseye->theta;
     }
-
     std::cout <<"do_lf_pre_rescue: done" << std::endl;
 }
 
