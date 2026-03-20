@@ -443,21 +443,18 @@ cv::Mat Perception::make_debug_grid(const cv::Mat& frame,
     cv::Mat plot_bgr = render_xz_plot(pts3d, w, h);
 
     cv::Mat row1, row2, grid;
-    cv::hconcat(std::vector<cv::Mat>{frame, fit(mask_bgr), fit(ridge_bgr)}, row1);
-    cv::hconcat(std::vector<cv::Mat>{fit(plot_bgr), fit(blue_mask_bgr), fit(blue_ridge_bgr)}, row2);
+    cv::hconcat(std::vector<cv::Mat>{frame,              fit(mask_bgr)      }, row1);
+    cv::hconcat(std::vector<cv::Mat>{fit(blue_mask_bgr), fit(blue_ridge_bgr)}, row2);
     cv::vconcat(std::vector<cv::Mat>{row1, row2}, grid);
 
     const std::vector<std::string> labels = {
-        "Frame", "Red Mask", "Red Ridge",
-        "3D Points (XZ)", "Blue Mask", "Blue Ridge"
+        "Frame", "Red Mask", "Blue Mask", "Blue Ridge"
     };
     const std::vector<cv::Point> positions = {
-        {10, 30},
-        {w + 10, 30},
-        {w * 2 + 10, 30},
-        {10, h + 30},
-        {w + 10, h + 30},
-        {w * 2 + 10, h + 30}
+        {10,      30},
+        {w + 10,  30},
+        {10,      h + 30},
+        {w + 10,  h + 30}
     };
     for (size_t i = 0; i < labels.size(); ++i) {
         cv::putText(grid, labels[i], positions[i], cv::FONT_HERSHEY_SIMPLEX,
