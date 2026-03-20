@@ -52,7 +52,8 @@ static cv::Mat make_debug_grid(
     const cv::Mat& frame,
     const cv::Mat& mask,
     const cv::Mat& ridge,
-    const std::vector<cv::Point3d>& pts3d)
+    const std::vector<cv::Point3d>& pts3d,
+    const std::optional<std::vector<cv::Vec3f>>& circles)
 {
     const int w = frame.cols;
     const int h = frame.rows;
@@ -62,6 +63,12 @@ static cv::Mat make_debug_grid(
         cv::resize(img, out, {w, h}, 0, 0, cv::INTER_NEAREST);
         return out;
     };
+
+    if (circles.has_value()) {
+        for (auto circle : circles.value()) {
+            cv::circle(frame, {static_cast<int>(circle[0]), static_cast<int>(circle[1])}, static_cast<int>(circle[2]), cv::Scalar(0, 255, 0), 2);
+        }
+    }
 
     // Convert single-channel images to BGR for stacking
     cv::Mat mask_bgr, ridge_bgr;
@@ -115,13 +122,14 @@ int main(int argc, char** argv)
         auto frame = perception.get_latest_bgr_frame();
 
         auto result = perception.detect_line(frame, height_filter, debug);
-        auto bullsey = perception.get_latest_bullsey_point();
+        auto circles = perception.detect_bullseye();
+        std::cout << "Circles: " << circles.size() << std::endl;
 
         // Print point count each frame
         std::cout << "\r3D points: " << result.points_3d.size()
                   << "   " << std::flush;
 
-        cv::Mat grid = make_debug_grid(frame, result.mask, result.ridge, result.points_3d);
+        cv::Mat grid = make_debug_grid(frame, result.mask, result.ridge, result.points_3d, circles);
 
         cv::imshow("Perception Debug", grid);
 

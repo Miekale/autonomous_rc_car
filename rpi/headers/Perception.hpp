@@ -17,6 +17,9 @@ class Perception {
 public:
     // Bundles all outputs from the detection pipeline
     struct DetectionResult {
+        DetectionResult(const cv::Mat &mask, const cv::Mat &ridge, const std::vector<cv::Point2f> &points_2d, const std::vector<cv::Point3d> &points_3d) 
+            : mask(mask), ridge(ridge), points_2d(points_2d), points_3d(points_3d) {};
+        DetectionResult() {};
         cv::Mat             mask;       // binary red mask (after morphology)
         cv::Mat             ridge;      // medial-axis / ridge image
         std::vector<cv::Point2f>  points_2d;  // ridge pixels
@@ -32,7 +35,9 @@ public:
     // ── Full pipeline (thread-safe, works on any image) ───────────────────────
     DetectionResult detect_line(const cv::Mat& bgr_image,
                                 int            height_filter,
-                                bool           debug = false) const;
+                                bool           debug = false);
+    
+    std::vector<cv::Vec3f> detect_bullseye();
 
     // ── FSM / controller interface ────────────────────────────────────────────
     std::vector<Position>   get_latest_line_follow_points();
@@ -43,7 +48,7 @@ private:
     // ── Camera parameters ─────────────────────────────────────────────────────
     cv::Mat _camera_matrix;
     cv::Mat _dist_coeffs;
-    double  _mounting_height = 0.0;
+    double  _mounting_height = MOUNTING_HEIGHT;
 
     // ── Line follow height filter ─────────────────────────────────────────────
     double HEIGHT_FILTER = 0;

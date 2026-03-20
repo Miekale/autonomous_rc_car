@@ -1,5 +1,7 @@
 #include "Perception.hpp"
 
+#include <cmath>
+
 #include <opencv2/opencv.hpp>
 #include <opencv2/imgproc.hpp>
 #include <opencv2/calib3d.hpp>
@@ -10,7 +12,6 @@
 // ─────────────────────────────────────────────────────────────────────────────
 // Helpers
 // ─────────────────────────────────────────────────────────────────────────────
-
 static double now_sec()
 {
     using namespace std::chrono;
@@ -33,7 +34,7 @@ Perception::Perception(std::string camera_device, bool video_file)
         std::cerr << "Failed to open camera\n";
     }
 
-    // Intrinsic matrix  
+    // Intrinsic parameter init
     // Flatten row-major into a 1D vector
     std::vector<double> flat;
     for (const auto& row : INTRINSIC_MATRIX)
@@ -45,11 +46,9 @@ Perception::Perception(std::string camera_device, bool video_file)
     std::vector<double> dist_flat(DISTORTION_COEFFICIENTS.begin(), DISTORTION_COEFFICIENTS.end());
     _dist_coeffs = cv::Mat(1, dist_flat.size(), CV_64F, dist_flat.data()).clone();
 
-    // Mounting height (metres above the floor plane)
-    _mounting_height = MOUNTING_HEIGHT;
-
     // Latest BGR frame
     _latest_bgr_frame = cv::Mat();
+    _latest_detection = DetectionResult{};
 }
 
 Perception::~Perception() {}
@@ -152,7 +151,7 @@ Perception::points2d_to_3d(const std::vector<cv::Point2f>& points_2d) const
 {
     if (points_2d.empty()) return {};
 
-    // Undistort pixel coordinates
+    // // Undistort pixel coordinates
     std::vector<cv::Point2f> undistorted;
     cv::undistortPoints(points_2d, undistorted,
                         _camera_matrix, _dist_coeffs,
@@ -172,13 +171,16 @@ Perception::points2d_to_3d(const std::vector<cv::Point2f>& points_2d) const
         double u = uv.x;
         double v = uv.y;
 
+        
         double Y = depth;
         double Z = Y * fy / (v - cy);
         double X = Z * (u - cx) / fx;
 
+        if (Z <= 0 || Z > 2000) continue;
+
         pts3d.emplace_back(X, Y, Z);
     }
-
+    
     return pts3d;
 }
 
@@ -187,7 +189,7 @@ Perception::points2d_to_3d(const std::vector<cv::Point2f>& points_2d) const
 // ─────────────────────────────────────────────────────────────────────────────
 
 Perception::DetectionResult 
-Perception::detect_line(const cv::Mat& bgr_image, int height_filter, bool debug) const
+Perception::detect_line(const cv::Mat& bgr_image, int height_filter, bool debug)
 {
     double t0 = now_sec();
 
@@ -209,10 +211,28 @@ Perception::detect_line(const cv::Mat& bgr_image, int height_filter, bool debug)
                   << "=======================\n";
     }
 
-    _latest_detection = { mask, ridge, pts2d, pts3d };
+    _latest_detection = DetectionResult(mask, ridge, pts2d, pts3d);
     return _latest_detection;
 }
 
+std::vector<cv::Vec3f> Perception::detect_bullseye()
+{
+    std::vector<cv::Vec3f> circles;
+
+    // cv::HoughCircles(
+    //     _latest_detection.ridge,
+    //     circles,
+    //     cv::HOUGH_GRADIENT,
+    //     1,                            // dp
+    //     _latest_bgr_frame.rows / 2,  // minDist between centres
+    //     100,                          // param1: Canny threshold
+    //     10,                          // param2: accumulator threshold (lower = more detections)
+    //     50,                   // minRadius
+    //     100               // maxRadius
+    // );
+    
+    return circles;
+}
 
 cv::Mat Perception::get_latest_bgr_frame()
 {
@@ -244,20 +264,17 @@ std::vector<Position> Perception::get_latest_line_follow_points()
 
 std::optional<Position> Perception::get_latest_bullsey_point()
 {
-    vector<Vec3f> circles;
-    HoughCircles(_latest_bgr_frame.mask, 
-                 circles, 
-                 HOUGH_GRADIENT, 
-                 1,
-                 _latest_bgr_frame.rows/4,  // change this value to detect circles with different distances to each other
-                 100, 30, 
-                 20, 200); // (min_radius & max_radius)
-    
-    if (!circles.empty()) {
-        return circles[0];
+    std::vector<cv::Vec3f> circles = detect_bullseye();
+    if (circles.empty()) {
+        return std::nullopt;
     }
 
-    return std::nullopt;
+    // TODO: select best circle point
+
+    // Get 3d point of bullseye
+    auto pts3d = points2d_to_3d({ { circles[0][0], circles[0][1] } });
+
+    return Position{ pts3d[0].x, pts3d[0].y, std::atan2(pts3d[0].x, pts3d[0].z) };
 }
 
 std::optional<Position> Perception::get_latest_end_goal_point()

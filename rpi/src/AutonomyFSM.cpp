@@ -99,9 +99,11 @@ void AutonomyFSM::do_lf_pre_rescue() {
     _rescue_controller->step_pursuit(*_serial, command, timestamp);
 
     // Query perception for bullseye, update if exists
-    auto bullseye = _perception->get_latest_bullsey_point();
-    if (bullseye.has_value()) {
-        _closest_bullseye = bullseye.value();
+    std::optional<Position> bullseye = _perception->get_latest_bullsey_point();
+    if (bullseye) {
+        _closest_bullseye.x = bullseye->x;
+        _closest_bullseye.y = bullseye->y;
+        _closest_bullseye.theta = bullseye->theta;
     }
 }
 
@@ -128,9 +130,9 @@ void AutonomyFSM::do_lf_post_rescue() {
     _rescue_controller->step_pursuit(*_serial, command, timestamp);
 
     // Query perception for goal/dropoff
-    auto end_goal = _perception->get_latest_end_goal_point();
-    if (end_goal.has_value()) {
-        _goal = end_goal.value();
+    std::optional<Position> end_goal = _perception->get_latest_end_goal_point();
+    if (end_goal) {
+        _goal = *end_goal;
     }
 }
 

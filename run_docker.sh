@@ -4,4 +4,4 @@ xhost +local:docker && docker run -it --rm \
     --volume $(pwd):/home \
     --device /dev/video0:/dev/video0 \
     --privileged \
-    rc:v1 ./build/perception_demo ./videos/vid_1_missing_corners.mov
+    rc:v1 ./build/perception_demo $1
