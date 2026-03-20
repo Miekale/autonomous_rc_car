@@ -15,6 +15,22 @@
 
 class Perception {
 public:
+
+    struct Segment {
+        cv::Point2f p1, p2;
+        cv::Point2f dir;
+        float len;
+        int min_index;
+        int max_index;
+    };
+
+    struct EndPoint {
+        cv::Point2f junction;
+        Segment line_straight;
+        Segment line_left;
+        Segment line_right;
+    };
+
     // Bundles all outputs from the detection pipeline
     struct DetectionResult {
         DetectionResult(const cv::Mat &mask, const cv::Mat &ridge, const std::vector<cv::Point2f> &points_2d, const std::vector<cv::Point3d> &points_3d) 
@@ -58,6 +74,8 @@ private:
     // ── Line follow height filter ─────────────────────────────────────────────
     double HEIGHT_FILTER = 0;
 
+    int MIN_POINTS = 3; // min points for a cluster to be considered a valid line
+
     // ── HSV thresholds ────────────────────────────────────────────────────────
     // Part A: "red" wrap-around (174–179)
     const cv::Scalar _lower_A = cv::Scalar(170, 50, 200);
@@ -92,6 +110,18 @@ private:
                                              float z_min = 0.f, float z_max = 8000.f) const;
     
     std::optional<cv::Point2f> get_center_point(std::vector<cv::Point2f>& pts2d/*, vector<cv::Point3d>& blue_pts3d*/) const;
+
+    // -- END POINT YALLc
+    std::vector<float> getRidgeAngles(const cv::Mat& ridge, const std::vector<cv::Point2f>& points_2d) const;
+    std::vector<std::vector<cv::Point2f>> clusterRidgePoints(const std::vector<cv::Point2f>& points_2d, const std::vector<float>& angles) const;
+    Segment fitSegmentToCluster(const std::vector<cv::Point2f>& cluster) const;
+    cv::Point2f findIntersection(const Segment& s1, const Segment& s2) const;
+    std::vector<Segment> getBestSegments(const std::vector<std::vector<cv::Point2f>>& clusters) const;
+    bool isTJunction(const Segment& bar, const Segment& stem, const cv::Point2f& junction) const;
+    EndPoint buildEndPoint(const Segment& bar, const Segment& stem, const cv::Point2f& junction) const;
+    std::optional<EndPoint> getEndpoint(const cv::Mat& ridge, const std::vector<cv::Point2f>& points_2d) const;
+    bool shouldMerge(const Segment& s1, const Segment& s2) const;
+
 };
 
-#endif // PERCEPTION_HPP
+#endif
