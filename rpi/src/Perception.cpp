@@ -76,6 +76,19 @@ cv::Mat Perception::get_red_mask(const cv::Mat& bgr_image) const
     return mask;
 }
 
+cv::Mat Perception::get_blue_mask(const cv::Mat& bgr_image) const
+{
+    cv::Mat blurred;
+    cv::GaussianBlur(bgr_image, blurred, cv::Size(5, 5), 0);
+
+    cv::Mat hsv;
+    cv::cvtColor(blurred, hsv, cv::COLOR_BGR2HSV);
+
+    cv::Mat mask;
+    cv::inRange(hsv, _lower_blue, _upper_blue, mask);
+    return mask;
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Step 2 – Morphological cleanup
 // ─────────────────────────────────────────────────────────────────────────────
@@ -293,6 +306,12 @@ Perception::detect_line(const cv::Mat& bgr_image, int height_filter, bool debug)
     auto pts2d    = extract_points(ridge);             double t4 = now_sec();
     auto pts3d    = points2d_to_3d(pts2d);             double t5 = now_sec();
 
+    cv::Mat blue_mask = get_blue_mask(bgr_image);     double t6 = now_sec();
+    blue_mask = clean_mask(blue_mask);                    double t7 = now_sec();
+    cv::Mat blue_ridge = extract_ridge(blue_mask, height_filter); double t8 = now_sec();
+    auto blue_pts2d = extract_points(blue_ridge);             double t9 = now_sec();
+    auto blue_pts3d = points2d_to_3d(blue_pts2d);             double t10 = now_sec();
+
     if (debug)
     {
         std::cout << "=======================\n"
@@ -375,4 +394,21 @@ std::optional<Position> Perception::get_latest_end_goal_point()
 {
     // TODO: implement end-goal detection
     return std::nullopt;
+}
+
+cv::Point2f Perception::getBlueCenter(std::vector<cv::Point2f>& blue_pts2d/*, vector<cv::Point3d>& blue_pts3d*/) const
+{
+    // 2D centroid from blue_pts2d
+    cv::Point2f blue_center_2d(0, 0);
+    for (auto& pt : blue_pts2d) {
+        blue_center_2d += cv::Point2f(pt.x, pt.y);
+    }
+    blue_center_2d *= (1.0f / blue_pts2d.size());
+    return blue_center_2d;
+    // OR 3D centroid from blue_pts3d
+    // Eigen::Vector3f blue_center_3d = Eigen::Vector3f::Zero();
+    // for (auto& pt : blue_pts3d) {
+    //     blue_center_3d += pt;
+    // }
+    // blue_center_3d /= blue_pts3d.size();
 }
