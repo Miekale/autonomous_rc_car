@@ -356,6 +356,29 @@ std::vector<Position> Perception::get_latest_line_follow_points()
     return positions;
 }
 
+std::vector<Position> Perception::get_latest_line_follow_points_2d()
+{
+    cv::Mat frame;
+    {
+        std::lock_guard<std::mutex> lock(_mtx);
+        if (!_has_frame) {
+            return {};
+        }
+        
+        frame = _latest_bgr_frame;
+    }
+
+    std::cout << "get_latest_line_follow_points: calling detect line" << std::endl;
+    auto result = detect_line(frame, HEIGHT_FILTER, /*debug=*/false);
+
+    std::vector<Position> positions;
+    positions.reserve(result.points_2d.size());
+    for (const auto& p : result.points_2d)
+        positions.push_back({p.x - 1920/2, 1080 - p.y, 0});
+
+    return positions;
+}
+
 std::optional<Position> Perception::get_latest_bullsey_point()
 {
     std::vector<cv::Vec3f> circles = detect_bullseye();
