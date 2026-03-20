@@ -314,14 +314,7 @@ Perception::detect_line(const cv::Mat& bgr_image, int height_filter, bool debug)
     auto pts2d    = extract_points(ridge);             double t4 = now_sec();
     auto pts3d    = points2d_to_3d(pts2d);             double t5 = now_sec();
 
-    cv::Mat blue_mask = get_blue_mask(bgr_image);     double t6 = now_sec();
-    blue_mask = clean_mask(blue_mask);                    double t7 = now_sec();
-    cv::Mat blue_ridge = extract_ridge(blue_mask, height_filter, 10); double t8 = now_sec();
-    auto blue_pts2d = extract_points(blue_ridge);             double t9 = now_sec();
-    auto blue_pts3d = points2d_to_3d(blue_pts2d);             double t10 = now_sec();
-    std::cout << "3D blue points: " << blue_pts2d.size() << std::endl;
-
-    if (!debug)
+    if (debug)
     {
         std::cout << "=======================\n"
                   << "Detection took   " << (t5 - t0) << " s\n"
@@ -334,7 +327,7 @@ Perception::detect_line(const cv::Mat& bgr_image, int height_filter, bool debug)
     }
 
     if (_show_debug_plots) {
-        cv::Mat grid = make_debug_grid(bgr_image, blue_mask, blue_ridge, pts3d);
+        cv::Mat grid = make_debug_grid(bgr_image, mask, ridge, pts3d);
         cv::imshow("Perception Debug", grid);
 
         int key = cv::waitKey(1);
@@ -424,19 +417,48 @@ std::optional<Position> Perception::get_latest_bullsey_point()
 
 std::optional<Position> Perception::get_latest_end_goal_point()
 {
-    // TODO: implement end-goal detection
+    double t0 = now_sec();
+    cv::Mat blue_mask = get_blue_mask(_latest_bgr_frame);     double t1 = now_sec();
+    blue_mask = clean_mask(blue_mask);                    double t2 = now_sec();
+    // cv::Mat blue_ridge = extract_ridge(blue_mask, height_filter, 10); double t3 = now_sec();
+    auto blue_pts2d = extract_points(blue_mask);             double t3 = now_sec();
+    // auto blue_pts3d = points2d_to_3d(blue_pts2d);             double t5 = now_sec();
+    std::optional<cv::Point2f> blue_center = get_blue_center(blue_pts2d); double t4 = now_sec();
+
+    if (_show_debug_plots)
+    {
+        std::cout << "3D blue points: " << blue_pts2d.size() << std::endl;
+
+        std::cout << "=======================\n"
+                << "End goal detection took   " << (t4 - t0) << " s\n"
+                << "Mask             " << (t1 - t0) << " s\n"
+                << "Clean            " << (t2 - t1) << " s\n"
+                << "Extract points   " << (t3 - t2) << " s\n"
+                << "Center detection " << (t4 - t3) << " s\n"
+                << "=======================\n";
+    }
+
+    if (blue_center.has_value()) {
+        return Position{ _latest_bgr_frame.rows - blue_center.value().y, blue_center.value().x - _latest_bgr_frame.cols / 2, 0};
+    }
+
     return std::nullopt;
 }
 
-cv::Point2f Perception::getBlueCenter(std::vector<cv::Point2f>& blue_pts2d/*, vector<cv::Point3d>& blue_pts3d*/) const
+std::optional<cv::Point2f> Perception::get_blue_center(std::vector<cv::Point2f>& blue_pts2d/*, vector<cv::Point3d>& blue_pts3d*/) const
 {
     // 2D centroid from blue_pts2d
+    if (blue_pts2d.empty()) {
+        return std::nullopt;
+    }
+
     cv::Point2f blue_center_2d(0, 0);
     for (auto& pt : blue_pts2d) {
         blue_center_2d += cv::Point2f(pt.x, pt.y);
     }
-    blue_center_2d *= (1.0f / blue_pts2d.size());
+    blue_center_2d /= static_cast<float>(blue_pts2d.size());
     return blue_center_2d;
+
     // OR 3D centroid from blue_pts3d
     // Eigen::Vector3f blue_center_3d = Eigen::Vector3f::Zero();
     // for (auto& pt : blue_pts3d) {

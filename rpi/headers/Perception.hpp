@@ -94,7 +94,7 @@ private:
                                              const std::vector<cv::Point3d>& pts3d) const;
     
 
-    cv::Point2f getBlueCenter(std::vector<cv::Point2f>& blue_pts2d/*, vector<cv::Point3d>& blue_pts3d*/) const;
+    std::optional<cv::Point2f> get_blue_center(std::vector<cv::Point2f>& blue_pts2d/*, vector<cv::Point3d>& blue_pts3d*/) const;
 
 };
 
