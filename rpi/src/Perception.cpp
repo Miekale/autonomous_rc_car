@@ -283,26 +283,6 @@ cv::Mat Perception::make_debug_grid(const cv::Mat& frame,
 // ─────────────────────────────────────────────────────────────────────────────
 // Public pipeline – detect_line
 // ─────────────────────────────────────────────────────────────────────────────
-std::vector<cv::Vec3f> Perception::detect_bullseye()
-{
-    std::vector<cv::Vec3f> circles;
-
-    // cv::HoughCircles(
-    //     _latest_detection.ridge,
-    //     circles,
-    //     cv::HOUGH_GRADIENT,
-    //     1,                            // dp
-    //     _latest_bgr_frame.rows / 2,  // minDist between centres
-    //     100,                          // param1: Canny threshold
-    //     10,                          // param2: accumulator threshold (lower = more detections)
-    //     50,                   // minRadius
-    //     100               // maxRadius
-    // );
-    
-    return circles;
-}
-
-
 Perception::DetectionResult 
 Perception::detect_line(const cv::Mat& bgr_image, int height_filter, bool debug)
 {
@@ -314,17 +294,17 @@ Perception::detect_line(const cv::Mat& bgr_image, int height_filter, bool debug)
     auto pts2d    = extract_points(ridge);             double t4 = now_sec();
     auto pts3d    = points2d_to_3d(pts2d);             double t5 = now_sec();
 
-    if (debug)
-    {
-        std::cout << "=======================\n"
-                  << "Detection took   " << (t5 - t0) << " s\n"
-                  << "Red mask         " << (t1 - t0) << " s\n"
-                  << "Clean mask       " << (t2 - t1) << " s\n"
-                  << "Extract ridge    " << (t3 - t2) << " s\n"
-                  << "Extract points   " << (t4 - t3) << " s\n"
-                  << "Points to 3-D    " << (t5 - t4) << " s\n"
-                  << "=======================\n";
-    }
+    // if (debug)
+    // {
+    //     std::cout << "=======================\n"
+    //               << "Detection took   " << (t5 - t0) << " s\n"
+    //               << "Red mask         " << (t1 - t0) << " s\n"
+    //               << "Clean mask       " << (t2 - t1) << " s\n"
+    //               << "Extract ridge    " << (t3 - t2) << " s\n"
+    //               << "Extract points   " << (t4 - t3) << " s\n"
+    //               << "Points to 3-D    " << (t5 - t4) << " s\n"
+    //               << "=======================\n";
+    // }
 
     if (_show_debug_plots) {
         cv::Mat grid = make_debug_grid(bgr_image, mask, ridge, pts3d);
@@ -402,62 +382,107 @@ std::vector<Position> Perception::get_latest_line_follow_points_2d()
 
 std::optional<Position> Perception::get_latest_bullsey_point()
 {
-    std::vector<cv::Vec3f> circles = detect_bullseye();
-    if (circles.empty()) {
-        return std::nullopt;
-    }
-
-    // TODO: select best circle point
-
-    // Get 3d point of bullseye
-    auto pts3d = points2d_to_3d({ { circles[0][0], circles[0][1] } });
-
-    return Position{ pts3d[0].x, pts3d[0].y, std::atan2(pts3d[0].x, pts3d[0].z) };
-}
-
-std::optional<Position> Perception::get_latest_end_goal_point()
-{
     double t0 = now_sec();
-    cv::Mat blue_mask = get_blue_mask(_latest_bgr_frame);     double t1 = now_sec();
-    blue_mask = clean_mask(blue_mask);                    double t2 = now_sec();
-    // cv::Mat blue_ridge = extract_ridge(blue_mask, height_filter, 10); double t3 = now_sec();
-    auto blue_pts2d = extract_points(blue_mask);             double t3 = now_sec();
-    // auto blue_pts3d = points2d_to_3d(blue_pts2d);             double t5 = now_sec();
-    std::optional<cv::Point2f> blue_center = get_blue_center(blue_pts2d); double t4 = now_sec();
+    cv::Mat blue_mask = get_blue_mask(_latest_bgr_frame);
+
+    double t1 = now_sec();
+    blue_mask = clean_mask(blue_mask);
+
+    double t2 = now_sec();
+    cv::Mat blue_ridge = extract_ridge(blue_mask, 0, 10);
+
+    double t3 = now_sec();
+    auto blue_pts2d = extract_points(blue_ridge);
+
+    double t4 = now_sec();
+    std::optional<cv::Point2f> blue_center = get_center_point(blue_pts2d);
+
+    double t5 = now_sec();
 
     if (_show_debug_plots)
     {
         std::cout << "3D blue points: " << blue_pts2d.size() << std::endl;
 
         std::cout << "=======================\n"
-                << "End goal detection took   " << (t4 - t0) << " s\n"
-                << "Mask             " << (t1 - t0) << " s\n"
-                << "Clean            " << (t2 - t1) << " s\n"
-                << "Extract points   " << (t3 - t2) << " s\n"
-                << "Center detection " << (t4 - t3) << " s\n"
+                  << "End goal detection took   " << (t5 - t0) << " s\n"
+                  << "Mask             " << (t1 - t0) << " s\n"
+                  << "Clean            " << (t2 - t1) << " s\n"
+                  << "Ridge            " << (t3 - t2) << " s\n"
+                  << "Extract points   " << (t4 - t3) << " s\n"
+                  << "Center detection " << (t5 - t4) << " s\n"
                 << "=======================\n";
     }
 
     if (blue_center.has_value()) {
-        return Position{ _latest_bgr_frame.rows - blue_center.value().y, blue_center.value().x - _latest_bgr_frame.cols / 2, 0};
+        Position center_camera_frame = Position{ _latest_bgr_frame.rows - blue_center.value().y, blue_center.value().x - _latest_bgr_frame.cols / 2, 0};
+        if (center_camera_frame.x < BULLSEYE_DISTANCE_STOP_LF) {
+            return Position{0, 0, 0};
+        }
+        return center_camera_frame;
     }
 
     return std::nullopt;
 }
 
-std::optional<cv::Point2f> Perception::get_blue_center(std::vector<cv::Point2f>& blue_pts2d/*, vector<cv::Point3d>& blue_pts3d*/) const
+std::optional<Position> Perception::get_latest_end_goal_point()
 {
-    // 2D centroid from blue_pts2d
-    if (blue_pts2d.empty()) {
+    // double t0 = now_sec();
+    // cv::Mat blue_mask = get_blue_mask(_latest_bgr_frame);
+
+    // double t1 = now_sec();
+    // blue_mask = clean_mask(blue_mask);
+
+    // double t2 = now_sec();
+    // cv::Mat blue_ridge = extract_ridge(blue_mask, 0, 10);
+
+    // double t3 = now_sec();
+    // auto blue_pts2d = extract_points(blue_ridge);
+
+    // double t4 = now_sec();
+    // std::optional<cv::Point2f> blue_center = get_center_point(blue_pts2d);
+
+    // double t5 = now_sec();
+
+    // if (_show_debug_plots)
+    // {
+    //     std::cout << "3D blue points: " << blue_pts2d.size() << std::endl;
+
+    //     std::cout << "=======================\n"
+    //               << "End goal detection took   " << (t5 - t0) << " s\n"
+    //               << "Mask             " << (t1 - t0) << " s\n"
+    //               << "Clean            " << (t2 - t1) << " s\n"
+    //               << "Ridge            " << (t3 - t2) << " s\n"
+    //               << "Extract points   " << (t4 - t3) << " s\n"
+    //               << "Center detection " << (t5 - t4) << " s\n"
+    //             << "=======================\n";
+    // }
+
+    // if (blue_center.has_value()) {
+    //     Position center_camera_frame = Position{ _latest_bgr_frame.rows - blue_center.value().y, blue_center.value().x - _latest_bgr_frame.cols / 2, 0};
+    //     if (center_camera_frame.x < 100) {
+    //         return Position{0, 0, 0};
+    //     }
+    //     return center_camera_frame;
+    // }
+
+    return std::nullopt;
+}
+
+std::optional<cv::Point2f> Perception::get_center_point(std::vector<cv::Point2f>& pts2d/*, vector<cv::Point3d>& blue_pts3d*/) const
+{
+    // 2D centroid from pts2d
+    if (pts2d.empty()) {
         return std::nullopt;
     }
 
-    cv::Point2f blue_center_2d(0, 0);
-    for (auto& pt : blue_pts2d) {
-        blue_center_2d += cv::Point2f(pt.x, pt.y);
+    cv::Point2f center_2d(0, 0);
+    for (auto& pt : pts2d) {
+        center_2d += cv::Point2f(pt.x, pt.y);
     }
-    blue_center_2d /= static_cast<float>(blue_pts2d.size());
-    return blue_center_2d;
+
+    center_2d /= static_cast<float>(pts2d.size());
+    
+    return center_2d;
 
     // OR 3D centroid from blue_pts3d
     // Eigen::Vector3f blue_center_3d = Eigen::Vector3f::Zero();
