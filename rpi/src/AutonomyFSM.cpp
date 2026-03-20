@@ -110,7 +110,7 @@ void AutonomyFSM::do_lf_pre_rescue() {
     // TODO: send command to Arduino via interfacing library
     std::cout << "do_lf_pre_rescue: " << std::endl;
     _rescue_controller->step_pursuit(*_serial, command, timestamp);
-
+    _serial->readAndPrint();
     // Query perception for bullseye, update if exists
     std::optional<Position> bullseye = _perception->get_latest_bullsey_point();
     if (bullseye) {
