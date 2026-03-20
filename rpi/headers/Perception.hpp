@@ -17,6 +17,9 @@ class Perception {
 public:
     // Bundles all outputs from the detection pipeline
     struct DetectionResult {
+        DetectionResult(const cv::Mat &mask, const cv::Mat &ridge, const std::vector<cv::Point2f> &points_2d, const std::vector<cv::Point3d> &points_3d) 
+            : mask(mask), ridge(ridge), points_2d(points_2d), points_3d(points_3d) {};
+        DetectionResult() {};
         cv::Mat             mask;       // binary red mask (after morphology)
         cv::Mat             ridge;      // medial-axis / ridge image
         std::vector<cv::Point2f>  points_2d;  // ridge pixels
@@ -46,7 +49,7 @@ private:
     // ── Camera parameters ─────────────────────────────────────────────────────
     cv::Mat _camera_matrix;
     cv::Mat _dist_coeffs;
-    double  _mounting_height = 0.0;
+    double  _mounting_height = MOUNTING_HEIGHT;
 
     // ── Line follow height filter ─────────────────────────────────────────────
     double HEIGHT_FILTER = 0;
@@ -64,6 +67,7 @@ private:
     cv::VideoCapture _cap;
     mutable std::mutex _mtx;
     cv::Mat            _latest_bgr_frame;
+    DetectionResult    _latest_detection;
     bool               _has_frame = false;
     bool               _show_debug_plots = false;
 

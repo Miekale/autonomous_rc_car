@@ -1,5 +1,7 @@
 #include "Perception.hpp"
 
+#include <cmath>
+
 #include <opencv2/opencv.hpp>
 #include <opencv2/imgproc.hpp>
 #include <opencv2/calib3d.hpp>
@@ -11,7 +13,6 @@
 // ─────────────────────────────────────────────────────────────────────────────
 // Helpers
 // ─────────────────────────────────────────────────────────────────────────────
-
 static double now_sec()
 {
     using namespace std::chrono;
@@ -35,7 +36,7 @@ Perception::Perception(std::string camera_device, bool video_file, bool show_deb
         std::cerr << "Failed to open camera\n";
     }
 
-    // Intrinsic matrix  
+    // Intrinsic parameter init
     // Flatten row-major into a 1D vector
     std::vector<double> flat;
     for (const auto& row : INTRINSIC_MATRIX)
@@ -46,9 +47,6 @@ Perception::Perception(std::string camera_device, bool video_file, bool show_deb
     // Distortion coefficients (1×N)
     std::vector<double> dist_flat(DISTORTION_COEFFICIENTS.begin(), DISTORTION_COEFFICIENTS.end());
     _dist_coeffs = cv::Mat(1, dist_flat.size(), CV_64F, dist_flat.data()).clone();
-
-    // Mounting height (metres above the floor plane)
-    _mounting_height = MOUNTING_HEIGHT;
 
     // Latest BGR frame
     _latest_bgr_frame = cv::Mat();
@@ -155,7 +153,7 @@ Perception::points2d_to_3d(const std::vector<cv::Point2f>& points_2d) const
 {
     if (points_2d.empty()) return {};
 
-    // Undistort pixel coordinates
+    // // Undistort pixel coordinates
     std::vector<cv::Point2f> undistorted;
     cv::undistortPoints(points_2d, undistorted,
                         _camera_matrix, _dist_coeffs,
@@ -175,27 +173,15 @@ Perception::points2d_to_3d(const std::vector<cv::Point2f>& points_2d) const
         double u = uv.x;
         double v = uv.y;
 
+        
         double Y = depth;
         double Z = Y * fy / (v - cy);
         double X = Z * (u - cx) / fx;
 
+        if (Z <= 0 || Z > 2000) continue;
+
         pts3d.emplace_back(X, Y, Z);
     }
-
-    // for (const auto& uv : undistorted) {
-    //     double u = uv.x;
-    //     double v = uv.y;
-    //     double ray_x = (u - cx) / fx;
-    //     double ray_y = (v - cy) / fy;
-
-    //     if (ray_y >= 0) {continue;}
-
-    //     double t = -_mounting_height / ray_y;
-    //     if (t<0) continue;
-
-    //     pts3d.emplace_back(t * ray_x, -_mounting_height, t);
-    // }
-
     return pts3d;
 }
 
@@ -353,8 +339,17 @@ std::vector<Position> Perception::get_latest_line_follow_points()
 
 std::optional<Position> Perception::get_latest_bullsey_point()
 {
-    // TODO: implement bullseye detection
-    return std::nullopt;
+    std::vector<cv::Vec3f> circles = detect_bullseye();
+    if (circles.empty()) {
+        return std::nullopt;
+    }
+
+    // TODO: select best circle point
+
+    // Get 3d point of bullseye
+    auto pts3d = points2d_to_3d({ { circles[0][0], circles[0][1] } });
+
+    return Position{ pts3d[0].x, pts3d[0].y, std::atan2(pts3d[0].x, pts3d[0].z) };
 }
 
 std::optional<Position> Perception::get_latest_end_goal_point()
