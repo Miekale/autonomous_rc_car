@@ -125,16 +125,19 @@ int main(int argc, char** argv)
         }
 
         auto result = perception.detect_line(frame, height_filter, debug);
-        auto circles = perception.detect_bullseye();
-        std::cout << "Circles: " << circles.size() << std::endl;
+        // auto circles = perception.detect_bullseye(); 
+        auto end_goal_point = perception.get_latest_end_goal_point();
+        if (end_goal_point.has_value()) {
+            std::cout << "End goal point: " << end_goal_point->x << ", " << end_goal_point->y << ", " << end_goal_point->theta << std::endl;
+        }
 
         // Print point count each frame
         std::cout << "\r3D points: " << result.points_3d.size()
                   << "   " << std::flush;
 
-        cv::Mat grid = make_debug_grid(frame, result.mask, result.ridge, result.points_3d, circles);
+        //cv::Mat grid = make_debug_grid(frame, result.mask, result.ridge, result.points_3d, circles);
 
-        cv::imshow("Perception Debug", grid);
+        //cv::imshow("Perception Debug", grid);
 
         int key = cv::waitKey(1);
         if (key == 'q' || key == 27) break;   // q or ESC
