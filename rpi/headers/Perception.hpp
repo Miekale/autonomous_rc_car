@@ -91,8 +91,14 @@ private:
                                              const cv::Mat& mask,
                                              const cv::Mat& ridge,
                                              const std::vector<cv::Point3d>& pts3d) const;
+    cv::Mat                  make_debug_grid(const cv::Mat& frame,
+                                             const cv::Mat& mask,
+                                             const cv::Mat& ridge,
+                                             const std::vector<cv::Point3d>& pts3d,
+                                             const cv::Mat& blue_mask,      
+                                             const cv::Mat& blue_ridge) const; 
 
-cv::Point2f getBlueCenter(std::vector<cv::Point2f>& blue_pts2d/*, std::vector<cv::Point3d>& blue_pts3d*/) const;
+    cv::Point2f getBlueCenter(std::vector<cv::Point2f>& blue_pts2d/*, vector<cv::Point3d>& blue_pts3d*/) const;
 
 };
 

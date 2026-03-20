@@ -325,7 +325,7 @@ Perception::detect_line(const cv::Mat& bgr_image, int height_filter, bool debug)
     }
 
     if (_show_debug_plots) {
-        cv::Mat grid = make_debug_grid(bgr_image, mask, ridge, pts3d);
+        cv::Mat grid = make_debug_grid(bgr_image, mask, ridge, pts3d, blue_mask, blue_ridge);
         cv::imshow("Perception Debug", grid);
 
         int key = cv::waitKey(1);
@@ -411,4 +411,59 @@ cv::Point2f Perception::getBlueCenter(std::vector<cv::Point2f>& blue_pts2d/*, ve
     //     blue_center_3d += pt;
     // }
     // blue_center_3d /= blue_pts3d.size();
+}
+
+cv::Mat Perception::make_debug_grid(const cv::Mat& frame,
+                                    const cv::Mat& mask,
+                                    const cv::Mat& ridge,
+                                    const std::vector<cv::Point3d>& pts3d,
+                                    const cv::Mat& blue_mask,
+                                    const cv::Mat& blue_ridge) const
+{
+    std::cout << "making debug grid" << std::endl;
+    const int w = frame.cols;
+    const int h = frame.rows;
+
+    auto fit = [&](const cv::Mat& img) {
+        cv::Mat out;
+        cv::resize(img, out, {w, h}, 0, 0, cv::INTER_NEAREST);
+        return out;
+    };
+
+    cv::Mat mask_bgr, ridge_bgr, blue_mask_bgr, blue_ridge_bgr;
+    cv::cvtColor(mask,       mask_bgr,       cv::COLOR_GRAY2BGR);
+    cv::cvtColor(ridge,      ridge_bgr,      cv::COLOR_GRAY2BGR);
+    cv::cvtColor(blue_mask,  blue_mask_bgr,  cv::COLOR_GRAY2BGR);
+    cv::cvtColor(blue_ridge, blue_ridge_bgr, cv::COLOR_GRAY2BGR);
+
+    cv::Mat blue_tint(blue_mask_bgr.size(), CV_8UC3, cv::Scalar(100, 0, 0));
+    cv::add(blue_mask_bgr,  blue_tint, blue_mask_bgr);
+    cv::add(blue_ridge_bgr, blue_tint, blue_ridge_bgr);
+
+    cv::Mat plot_bgr = render_xz_plot(pts3d, w, h);
+
+    cv::Mat row1, row2, grid;
+    cv::hconcat(std::vector<cv::Mat>{frame, fit(mask_bgr), fit(ridge_bgr)}, row1);
+    cv::hconcat(std::vector<cv::Mat>{fit(plot_bgr), fit(blue_mask_bgr), fit(blue_ridge_bgr)}, row2);
+    cv::vconcat(std::vector<cv::Mat>{row1, row2}, grid);
+
+    const std::vector<std::string> labels = {
+        "Frame", "Red Mask", "Red Ridge",
+        "3D Points (XZ)", "Blue Mask", "Blue Ridge"
+    };
+    const std::vector<cv::Point> positions = {
+        {10, 30},
+        {w + 10, 30},
+        {w * 2 + 10, 30},
+        {10, h + 30},
+        {w + 10, h + 30},
+        {w * 2 + 10, h + 30}
+    };
+    for (size_t i = 0; i < labels.size(); ++i) {
+        cv::putText(grid, labels[i], positions[i], cv::FONT_HERSHEY_SIMPLEX,
+                    0.8, cv::Scalar(0, 255, 0), 2, cv::LINE_AA);
+    }
+
+    cv::resize(grid, grid, {int(1920 / 1.5), int(1080 / 1.5)}, 0, 0, cv::INTER_NEAREST);
+    return grid;
 }
