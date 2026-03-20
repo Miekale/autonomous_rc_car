@@ -80,7 +80,6 @@ private:
     // ── Pipeline steps ────────────────────────────────────────────────────────
     cv::Mat                  get_red_mask   (const cv::Mat& bgr_image) const;
     cv::Mat                  get_blue_mask  (const cv::Mat& bgr_image) const;
-    cv::Mat                  get_blue_mask  (const cv::Mat& bgr_image) const;
     cv::Mat                  clean_mask     (const cv::Mat& mask)       const;
     cv::Mat                  extract_ridge  (const cv::Mat& mask, int height_filter, int width_filter = 0) const;
     std::vector<cv::Point2f> extract_points (const cv::Mat& ridge)      const;
@@ -96,12 +95,12 @@ private:
     
 
     std::optional<cv::Point2f> get_center_point(std::vector<cv::Point2f>& pts2d/*, vector<cv::Point3d>& blue_pts3d*/) const;
-    cv::Mat                  make_debug_grid(const cv::Mat& frame,
-                                             const cv::Mat& mask,
-                                             const cv::Mat& ridge,
-                                             const std::vector<cv::Point3d>& pts3d,
-                                             const cv::Mat& blue_mask,      
-                                             const cv::Mat& blue_ridge) const; 
+    // cv::Mat                  make_debug_grid(const cv::Mat& frame,
+    //                                          const cv::Mat& mask,
+    //                                          const cv::Mat& ridge,
+    //                                          const std::vector<cv::Point3d>& pts3d,
+    //                                          const cv::Mat& blue_mask,      
+    //                                          const cv::Mat& blue_ridge) const; 
 };
 
 #endif // PERCEPTION_HPP
