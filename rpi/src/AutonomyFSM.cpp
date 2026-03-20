@@ -119,6 +119,8 @@ void AutonomyFSM::do_lf_pre_rescue() {
         std::cout << "Updated closest bullseye to: " << bullseye.value().x << ", " << bullseye.value().y << std::endl;
         _closest_bullseye.theta = bullseye->theta;
     }
+
+    std::cout <<"do_lf_pre_rescue: done" << std::endl;
 }
 
 void AutonomyFSM::do_rescuing() {
