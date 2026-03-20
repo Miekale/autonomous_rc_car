@@ -68,20 +68,15 @@ void RobotController::execute_v_w_command(float v, float w) {
     float vl = 0;
     float vr = 0;
 
-    if (v > 0) {
-        vl += 0.8;
-        vr += 0.8;
-    }
+    linalg::FloatPair pair = Controls::inverse_kinematics(v, w);
 
-    // If w > 0, make left faster
-    if (w > 0) {
-        vr -= 0.2;
-    }
+    vl = pair.first / 0.2; // TODO put the 0.2 into a constants file, it's the max linear speed for now
+    vr = pair.second / 0.2;
 
-    // If w < 0, make right faster
-    if (w < 0) {
-        vl -= 0.2;
-    }
+    Serial.print("vl: ")
+    Serial.print(vl)
+    Serial.print("vr: ")
+    Serial.println(vr)
 
     set_m_l_speed(vl);
     set_m_r_speed(vr);

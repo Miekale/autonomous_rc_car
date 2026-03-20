@@ -1,6 +1,5 @@
 #include "Perception.hpp"
 #include <opencv2/opencv.hpp>
-#include <opencv2/imgproc.hpp>
 #include <iostream>
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -113,11 +112,11 @@ int main(int argc, char** argv)
     std::cout << "Height filter: " << height_filter << "\n";
     std::cout << "Press 'q' or ESC to quit, 'd' to toggle timing debug\n";
 
-    Perception perception(device, true);
+    Perception perception(device, true, true);
 
     bool debug = true;
 
-    while (true)
+    while (true)s
     {
         auto frame = perception.get_latest_bgr_frame();
 

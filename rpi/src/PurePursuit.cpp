@@ -35,6 +35,7 @@ Position PurePursuit::findLookaheadPoint(Position currPos, const std::vector<Pos
     }
 
     if (!foundInRing) { // fallback, just returns the last position for now. 
+        std::cout << "findLookaheadPoint: not found in ring" << std::endl;
         if (hasLastPosition) return lastPosition;
         return currPos;
     }
@@ -49,13 +50,16 @@ std::pair<float, float> PurePursuit::getControl(Position currPos, Position targe
     // transform target point to locale coords (robot faces down the x)
     float dx = target.x - currPos.x;
     float dy = target.y - currPos.y;
+    float distance = std::sqrt(std::pow(dx, 2) + std::pow(dy, 2));
     
     Position localeTarget = rotatePosition(dx, dy, -currPos.theta);
 
-    float steeringAngle = K_curve * 2.0 * localeTarget.y / (lookAheadDist * lookAheadDist);
-    //
-    float velocity = maxLinearVel / (1 + K_velocity * abs(steeringAngle)); // tune velocity based on curvature
-    float angularVel = (2.0 * velocity * localeTarget.y) / (lookAheadDist * lookAheadDist);
+    float scaled_curvature = K_curve * 2.0 * localeTarget.y / (std::pow(distance, 2));
+    std::cout << "getControl: " << "local target: " << localeTarget.x << ", " << localeTarget.y << std::endl;
+    std::cout << "getControl: " << "scaled_curvature: " << scaled_curvature << std::endl;
+
+    float velocity = maxLinearVel / (1 + K_velocity * abs(scaled_curvature)); // tune velocity based on curvature
+    float angularVel = velocity * scaled_curvature;
 
     return {velocity, angularVel};
 }

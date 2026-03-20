@@ -72,7 +72,7 @@ public:
     StatePair predict_step(Mat3 A, Vec3 prev_state, Mat3 prev_P, Mat3 Q);
     StatePair correct_step(Vec3 z_sensor, Mat3 H, Mat3 R, Vec3 pred_state, Mat3 pred_P);
 
-    FloatPair forward_kinematics(float w_r, float w_l);
+    static FloatPair forward_kinematics(float w_r, float w_l);
     FloatPair inverse_kinematics(float v, float w);
 };
 

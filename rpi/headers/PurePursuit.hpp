@@ -7,6 +7,8 @@
 #include "Constants.hpp"
 #include <utility>
 #include <algorithm>
+#include <iostream>
+#include <cmath>
 
 /*
 coulters original pure pursuit paper
