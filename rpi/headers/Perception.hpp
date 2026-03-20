@@ -76,7 +76,7 @@ private:
     cv::Mat                  render_xz_plot (const std::vector<cv::Point3d>& pts3d,
                                              int w, int h,
                                              float x_min = -2000.f, float x_max = 2000.f,
-                                             float z_min = 0.f, float z_max = 4000.f) const;
+                                             float z_min = 0.f, float z_max = 8000.f) const;
     cv::Mat                  make_debug_grid(const cv::Mat& frame,
                                              const cv::Mat& mask,
                                              const cv::Mat& ridge,

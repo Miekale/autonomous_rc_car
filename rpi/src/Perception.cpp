@@ -182,6 +182,20 @@ Perception::points2d_to_3d(const std::vector<cv::Point2f>& points_2d) const
         pts3d.emplace_back(X, Y, Z);
     }
 
+    // for (const auto& uv : undistorted) {
+    //     double u = uv.x;
+    //     double v = uv.y;
+    //     double ray_x = (u - cx) / fx;
+    //     double ray_y = (v - cy) / fy;
+
+    //     if (ray_y >= 0) {continue;}
+
+    //     double t = -_mounting_height / ray_y;
+    //     if (t<0) continue;
+
+    //     pts3d.emplace_back(t * ray_x, -_mounting_height, t);
+    // }
+
     return pts3d;
 }
 
