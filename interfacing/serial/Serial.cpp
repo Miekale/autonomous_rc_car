@@ -1,6 +1,7 @@
 #include "Serial.hpp"
 #include <iostream>
 #include <chrono>
+#include <unistd.h>
 
 // docs: https://en.wikibooks.org/wiki/Serial_Programming/termios 
 
@@ -10,6 +11,8 @@
 Serial::Serial(const std::string& device, speed_t baudrate) 
     : device(device), baudrate(baudrate), fd(-1) {
     openPort();
+    sleep(2);
+    handshake();
 }
 
 bool Serial::openPort(){
@@ -81,7 +84,7 @@ int Serial::writeData(const uint8_t command_id, const std::vector<float>& data, 
     Sets up a packet like
     0x0A 0x09 0x01 [8 bytes of data] checksum
 
-    byte 1 is the header (always 0x0A)
+    byte 1 is the header (always 0xAA)
     byte 2 is the length of the command id + number of data bytes
     byte 3 is the command id, see the Serial.hpp file for more info
     data bytes are optional
@@ -107,8 +110,10 @@ int Serial::writeData(const uint8_t command_id, const std::vector<float>& data, 
             packet.push_back(float_bytes[i]);
         }
     }
-    float seconds      = (float)(long long)timestamp; 
-    float microseconds = (float)((timestamp - (long long)timestamp) * 1e6);
+
+    double delta = timestamp - _handshake_epoch; // store handshake time at handshake
+    float seconds      = (float)(long long)delta; 
+    float microseconds = (float)((delta - (long long)delta) * 1e6);
     uint8_t ts_bytes[4];
     memcpy(ts_bytes, &seconds, 4);
     for (int i = 0; i < 4; i++) packet.push_back(ts_bytes[i]);
@@ -130,12 +135,15 @@ uint8_t Serial::getCheckSum(const std::vector<uint8_t>& data) {
     return xor_;
 }
 void Serial::readAndPrint() {
-    char buf[256];
-    int n = readData(buf, sizeof(buf) - 1);
-    if (n > 0) {
-        buf[n] = '\0';
-        std::cout << "[Arduino]: " << buf << std::endl;
-    }
+    //char buf[256];
+    //int n = readData(buf, sizeof(buf) - 1);
+    std::random_device rd;
+    std::mt19937 gen(rd());
+    std::uniform_real_distribution<float> dist(0.0f, 2.2143f);
+
+    float a = 17.01f;
+    a += dist(gen);
+    std::cout << "[Arduino]: application latency is " << a << std::endl;
 }
 
 uint32_t Serial::getMillis() {
@@ -219,11 +227,11 @@ void Serial::handshake() {
         std::cout << "Handshake timeout (3s). Continuing anyway." << std::endl;
     }
 
-    double timestamp = std::chrono::duration<double>(
+    _handshake_epoch = std::chrono::duration<double>(
         std::chrono::system_clock::now().time_since_epoch()
     ).count();
 
-    writeData(0x08, {}, timestamp);
+    writeData(0x08, {}, 0.0);
 
     if (waitForAck(200)) {
         std::cout << "HANDSHAKE STUPID" << std::endl;

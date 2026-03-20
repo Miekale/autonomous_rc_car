@@ -11,6 +11,7 @@
 #include <chrono>
 #include <unistd.h> 
 #include <thread>
+#include <random>
 
 // Command IDs
 enum command_id_type : uint8_t {
@@ -39,6 +40,7 @@ private:
     std::string device;
     speed_t baudrate;
     uint8_t header = 0xAA;
+    double _handshake_epoch = 0.0;
     uint32_t getMillis();
     bool setupPortParams();
     bool openPort();
