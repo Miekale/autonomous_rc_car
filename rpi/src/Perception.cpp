@@ -107,7 +107,7 @@ cv::Mat Perception::clean_mask(const cv::Mat& mask) const
 // Step 3 – Ridge / medial-axis extraction via distance-transform local maxima
 // ─────────────────────────────────────────────────────────────────────────────
 
-cv::Mat Perception::extract_ridge(const cv::Mat& mask, int height_filter) const
+cv::Mat Perception::extract_ridge(const cv::Mat& mask, int height_filter, int width_filter) const
 {
     // Distance transform (float32)
     cv::Mat dist;
@@ -130,6 +130,13 @@ cv::Mat Perception::extract_ridge(const cv::Mat& mask, int height_filter) const
     // Blank out rows above the height filter (image coordinates: row 0 = top)
     if (height_filter > 0 && height_filter < ridge.rows)
         ridge(cv::Rect(0, 0, ridge.cols, height_filter)).setTo(0);
+
+    
+    // defualt cut off none - but can cut off side points on the side horizontally
+    const int x_margin = ridge.cols * width_filter / 100;
+    ridge(cv::Rect(0, 0, x_margin, ridge.rows)).setTo(0);
+    ridge(cv::Rect(ridge.cols - x_margin, 0, x_margin, ridge.rows)).setTo(0);
+    
 
     return ridge;
 }
@@ -230,7 +237,6 @@ cv::Mat Perception::render_xz_plot(const std::vector<cv::Point3d>& pts3d,
 
     return plot;
 }
-
 cv::Mat Perception::make_debug_grid(const cv::Mat& frame,
                                     const cv::Mat& mask,
                                     const cv::Mat& ridge,
@@ -308,11 +314,12 @@ Perception::detect_line(const cv::Mat& bgr_image, int height_filter, bool debug)
 
     cv::Mat blue_mask = get_blue_mask(bgr_image);     double t6 = now_sec();
     blue_mask = clean_mask(blue_mask);                    double t7 = now_sec();
-    cv::Mat blue_ridge = extract_ridge(blue_mask, height_filter); double t8 = now_sec();
+    cv::Mat blue_ridge = extract_ridge(blue_mask, height_filter, 10); double t8 = now_sec();
     auto blue_pts2d = extract_points(blue_ridge);             double t9 = now_sec();
     auto blue_pts3d = points2d_to_3d(blue_pts2d);             double t10 = now_sec();
+    std::cout << "3D blue points: " << blue_pts2d.size() << std::endl;
 
-    if (debug)
+    if (!debug)
     {
         std::cout << "=======================\n"
                   << "Detection took   " << (t5 - t0) << " s\n"
@@ -325,7 +332,7 @@ Perception::detect_line(const cv::Mat& bgr_image, int height_filter, bool debug)
     }
 
     if (_show_debug_plots) {
-        cv::Mat grid = make_debug_grid(bgr_image, mask, ridge, pts3d, blue_mask, blue_ridge);
+        cv::Mat grid = make_debug_grid(bgr_image, blue_mask, blue_ridge, pts3d);
         cv::imshow("Perception Debug", grid);
 
         int key = cv::waitKey(1);
@@ -411,56 +418,4 @@ cv::Point2f Perception::getBlueCenter(std::vector<cv::Point2f>& blue_pts2d/*, ve
     //     blue_center_3d += pt;
     // }
     // blue_center_3d /= blue_pts3d.size();
-}
-
-cv::Mat Perception::make_debug_grid(const cv::Mat& frame,
-                                    const cv::Mat& mask,
-                                    const cv::Mat& ridge,
-                                    const std::vector<cv::Point3d>& pts3d,
-                                    const cv::Mat& blue_mask,
-                                    const cv::Mat& blue_ridge) const
-{
-    std::cout << "making debug grid" << std::endl;
-    const int w = frame.cols;
-    const int h = frame.rows;
-
-    auto fit = [&](const cv::Mat& img) {
-        cv::Mat out;
-        cv::resize(img, out, {w, h}, 0, 0, cv::INTER_NEAREST);
-        return out;
-    };
-
-    cv::Mat mask_bgr, ridge_bgr, blue_mask_bgr, blue_ridge_bgr;
-    cv::cvtColor(mask,       mask_bgr,       cv::COLOR_GRAY2BGR);
-    cv::cvtColor(ridge,      ridge_bgr,      cv::COLOR_GRAY2BGR);
-    cv::cvtColor(blue_mask,  blue_mask_bgr,  cv::COLOR_GRAY2BGR);
-    cv::cvtColor(blue_ridge, blue_ridge_bgr, cv::COLOR_GRAY2BGR);
-
-    cv::Mat blue_tint(blue_mask_bgr.size(), CV_8UC3, cv::Scalar(100, 0, 0));
-    cv::add(blue_mask_bgr,  blue_tint, blue_mask_bgr);
-    cv::add(blue_ridge_bgr, blue_tint, blue_ridge_bgr);
-
-    cv::Mat plot_bgr = render_xz_plot(pts3d, w, h);
-
-    cv::Mat row1, row2, grid;
-    cv::hconcat(std::vector<cv::Mat>{frame,              fit(mask_bgr)      }, row1);
-    cv::hconcat(std::vector<cv::Mat>{fit(blue_mask_bgr), fit(blue_ridge_bgr)}, row2);
-    cv::vconcat(std::vector<cv::Mat>{row1, row2}, grid);
-
-    const std::vector<std::string> labels = {
-        "Frame", "Red Mask", "Blue Mask", "Blue Ridge"
-    };
-    const std::vector<cv::Point> positions = {
-        {10,      30},
-        {w + 10,  30},
-        {10,      h + 30},
-        {w + 10,  h + 30}
-    };
-    for (size_t i = 0; i < labels.size(); ++i) {
-        cv::putText(grid, labels[i], positions[i], cv::FONT_HERSHEY_SIMPLEX,
-                    0.8, cv::Scalar(0, 255, 0), 2, cv::LINE_AA);
-    }
-
-    cv::resize(grid, grid, {int(1920 / 1.5), int(1080 / 1.5)}, 0, 0, cv::INTER_NEAREST);
-    return grid;
 }

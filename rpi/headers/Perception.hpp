@@ -64,8 +64,8 @@ private:
     const cv::Scalar _lower_B = cv::Scalar(0, 100, 200);
     const cv::Scalar _upper_B = cv::Scalar(10, 255, 255);
 
-    const cv::Scalar _lower_blue = cv::Scalar(100, 120, 70);
-    const cv::Scalar _upper_blue = cv::Scalar(145, 185, 255);
+    const cv::Scalar _lower_blue = cv::Scalar(110, 110, 40);
+    const cv::Scalar _upper_blue = cv::Scalar(135, 255, 255);
 
 
     // ── Latest frame (written by set_latest_bgr_frame) ───────────────────────
@@ -80,7 +80,7 @@ private:
     cv::Mat                  get_red_mask   (const cv::Mat& bgr_image) const;
     cv::Mat                  get_blue_mask  (const cv::Mat& bgr_image) const;
     cv::Mat                  clean_mask     (const cv::Mat& mask)       const;
-    cv::Mat                  extract_ridge  (const cv::Mat& mask, int height_filter) const;
+    cv::Mat                  extract_ridge  (const cv::Mat& mask, int height_filter, int width_filter = 0) const;
     std::vector<cv::Point2f> extract_points (const cv::Mat& ridge)      const;
     std::vector<cv::Point3d> points2d_to_3d (const std::vector<cv::Point2f>& pts2d) const;
     cv::Mat                  render_xz_plot (const std::vector<cv::Point3d>& pts3d,
