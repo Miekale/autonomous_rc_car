@@ -8,10 +8,11 @@
 
 #include <thread>
 #include <iostream>
+#include <fstream>
 
 bool debug = true;
 
-int main() {
+int main(int argc, char* argv[]) {
     Serial serial("/dev/ttyACM0", SERIAL_BAUD_RATE);
     PurePursuit pure_pursuit(
         LOOK_AHEAD_DISTANCE,
@@ -21,8 +22,17 @@ int main() {
         MAX_LINEAR_VELOCITY
     );
     RescueController rescue_controller;
-    // Perception perception("0", false, debug);
-    Perception perception("/home/utils/ending.mov", true, true);
+
+    Perception perception = argc > 1
+        ? Perception(argv[1], true, true)
+        : Perception("0", false, debug);
+
+    std::ifstream f(argv[1]);
+    if (!f.is_open()) {
+        std::cerr << "Could not open file: " << argv[1] << std::endl;
+        return 1;
+    }
+
     AutonomyFSM fsm(&pure_pursuit, &perception, &rescue_controller, &serial, debug);
 
     std::cout << "DONE INI" << std::endl;
