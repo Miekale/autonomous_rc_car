@@ -41,19 +41,6 @@ uint16_t EncoderAS5600::readRaw() {
     return 0xFFFF;
 }
 
-void EncoderAS5600::update() {
-    uint16_t currentRaw = readRaw();
-    if (currentRaw > 4095) return;
-
-    int16_t delta = currentRaw - prevRaw;
-
-    if (delta > 2048) delta -= 4096; // determine angle change to determine dir
-    else if (delta < -2048) delta += 4096;
-
-    totalTicks += delta;
-    prevRaw = currentRaw;
-}
-
 float EncoderAS5600::getAngle() const {
     return totalTicks * (2.0f * PI / 4096.0f);
 }
@@ -65,3 +52,19 @@ long EncoderAS5600::getTicks() const {
 void EncoderAS5600::reset() {
     totalTicks = 0;
 }
+
+// In update(), track velocity internally
+void EncoderAS5600::update(float dt) {
+    uint16_t currentRaw = readRaw();
+    if (currentRaw > 4095) return;
+
+    int16_t delta = currentRaw - prevRaw;
+    if (delta > 2048)       delta -= 4096;
+    else if (delta < -2048) delta += 4096;
+
+    totalTicks += delta;
+    velocity = (delta * (2.0f * PI / 4096.0f)) / dt;  // rad/s
+    prevRaw = currentRaw;
+}
+
+float EncoderAS5600::getVelocity() const { return velocity; }

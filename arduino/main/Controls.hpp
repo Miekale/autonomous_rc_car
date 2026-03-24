@@ -2,6 +2,8 @@
 #define CONTROL_HPP
 
 #include "LinAlg.hpp"
+#include "Arduino.h" 
+
 using linalg::Mat3;
 using linalg::Vec3;
 using linalg::StatePair;
@@ -18,18 +20,6 @@ public:
         1.0f, 0.02f, 0.0f,
         0.0f, 1.0f,  0.0f,
         0.0f, 0.0f,  1.0f
-    );
-
-    const Mat3 R_imu = Mat3(
-        1.0f, 0.0f, 0.0f,
-        0.0f, 1.0f, 0.0f,
-        0.0f, 0.0f, 1.0f
-    );
-
-    const Mat3 Q_imu = Mat3(
-        1.0f, 0.0f, 0.0f,
-        0.0f, 1.0f, 0.0f,
-        0.0f, 0.0f, 1.0f
     );
 
     const Mat3 R_enc = Mat3(
@@ -52,10 +42,13 @@ public:
 
     Controls();
 
-    void step_50hz();
+    FloatPair step(float a_x, float w_l_enc, float w_r_enc, float pps_vl, float pps_w);
 
+    uint32_t last_time;
+    uint32_t time_delta;
+    Vec3 sensor;
+    Mat3 P_covariance;
     Vec3 target_state;
-    Vec3 error_state;
 
     float kpv;
     float kiv;
