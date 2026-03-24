@@ -2,8 +2,10 @@
 #define ROBOT_CONTROLLER_HPP
 
 #include <Servo.h>
-#include "Control.hpp"
+#include "Controls.hpp"
 #include "LinAlg.hpp"
+#include "EncoderAS5600.hpp"
+#include "IMUGY61.hpp"
 
 class RobotController {
 private:
@@ -14,14 +16,17 @@ private:
     int _m_L_low_pin;
     int _m_R_high_pin;
     int _m_R_low_pin;
-    uint32_t _last_enc_time = 0
+    uint32_t _last_enc_time = 0;
     float r_wheel = 31;
     float max_linear_velocity = 1000; // mm/s
     float max_angular_velocity = max_linear_velocity / r_wheel; // rad/s
+    int freq = 50;
+    int _second_count = 0;
+    uint32_t _last_time_second = 0;
 
-    EncoderAS5600 _left_encoder;
-    EncoderAS5600 _right_encoder;
-    IMUGY61 _imu;
+    EncoderAS5600& _left_encoder;
+    EncoderAS5600& _right_encoder;
+    IMUGY61& _imu;
     Controls _controls;
 
 public: 

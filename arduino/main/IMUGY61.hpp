@@ -1,6 +1,6 @@
 #ifndef IMUGY61_H
 #define IMUGY61_H
-
+#include "Arduino.h"
 class IMUGY61 {
 private:
     int   _x_pin, _y_pin, _z_pin;

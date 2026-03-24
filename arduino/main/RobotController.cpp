@@ -2,7 +2,7 @@
 #include "Arduino.h"
 
 // RobotController.cpp
-RobotController::    RobotController(EncoderAS5600& left_encoder, EncoderAS5600& right_encoder, 
+RobotController::RobotController(EncoderAS5600& left_encoder, EncoderAS5600& right_encoder, 
         IMUGY61& imu, Servo& servo, int servo_pin, int motor_L_high_pin, int motor_L_low_pin, 
         int motor_R_high_pin, int motor_R_low_pin)
     : _left_encoder(left_encoder), _right_encoder(right_encoder), _imu(imu), _servo(servo), 
@@ -13,8 +13,8 @@ RobotController::    RobotController(EncoderAS5600& left_encoder, EncoderAS5600&
     pinMode(_m_L_low_pin, OUTPUT);
     pinMode(_m_R_high_pin, OUTPUT);
     pinMode(_m_R_low_pin, OUTPUT);
-    _controls = Controls();
     _last_enc_time = millis();
+    _last_time_second = millis();
 }
 
 void RobotController::openClaw() {
@@ -81,12 +81,30 @@ void RobotController::execute_v_w_command(float v, float w) {
     float w_l = _left_encoder.getVelocity();   // or getTicks() / dt
     float w_r = _right_encoder.getVelocity();
 
-    linalg::FloatPair pair = _controls.step_50hz(a_x, w_l, w_r, v, w);
+    linalg::FloatPair pair = _controls.step(a_x, w_l, w_r, v, w);
 
     // angular velocities
-    vl = pair.first / max_angular_velocity;
-    vr = pair.second / max_angular_velocity;
+    w_l = pair.first / max_angular_velocity;
+    w_r = pair.second / max_angular_velocity;
 
-    set_m_l_speed(wl);
-    set_m_r_speed(wr); // TODO: this is left compensation
+    set_m_l_speed(w_l);
+    set_m_r_speed(w_r); 
+
+    _second_count++;
+
+    if (_second_count >= freq) {
+        // One full second of iterations has elapsed
+        uint32_t elapsed = millis() - _last_time_second;
+
+        if (elapsed > 1000) {
+            Serial.print(F("WARNING: running slow, 50 iterations took "));
+            Serial.print(elapsed);
+            Serial.println(F("ms"));
+        } else {
+            delay(1000 - elapsed);
+        }
+
+        _second_count = 0;
+        _last_time_second = millis();
+    }
 }

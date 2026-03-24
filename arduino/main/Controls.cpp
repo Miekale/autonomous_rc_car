@@ -55,7 +55,7 @@ Controls::Controls() {
     estimated_state = Vec3();
 }
 
-FloatPair Controls::step_50hz(float a_x, float w_l_enc, float w_r_enc, float pps_vl, float pps_w) {
+FloatPair Controls::step(float a_x, float w_l_enc, float w_r_enc, float pps_vl, float pps_w) {
     // Forward kinematics
     FloatPair speed = forward_kinematics(w_l_enc, w_r_enc);
     sensor[0] = speed.first;   // measured v

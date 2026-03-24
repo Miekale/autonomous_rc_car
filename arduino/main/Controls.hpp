@@ -2,6 +2,8 @@
 #define CONTROL_HPP
 
 #include "LinAlg.hpp"
+#include "Arduino.h" 
+
 using linalg::Mat3;
 using linalg::Vec3;
 using linalg::StatePair;
@@ -40,11 +42,12 @@ public:
 
     Controls();
 
-    FloatPair step_50hz(const linalg::Vec3& sensor, const linalg::Vec3& t);
+    FloatPair step(float a_x, float w_l_enc, float w_r_enc, float pps_vl, float pps_w);
 
-    uint64_t last_time;
-    uint64_t time_delta;
-
+    uint32_t last_time;
+    uint32_t time_delta;
+    Vec3 sensor;
+    Mat3 P_covariance;
     Vec3 target_state;
 
     float kpv;
