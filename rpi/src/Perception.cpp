@@ -244,58 +244,6 @@ cv::Mat Perception::render_xz_plot(const std::vector<cv::Point3d>& pts3d,
     return plot;
 }
 
-void Perception::make_debug_grid()
-{
-    if (!_debug) {
-        return;
-    }
-    cv::Mat frame = _latest_bgr_frame;
-    cv::Mat mask = _latest_detection.mask;
-    cv::Mat ridge = _latest_detection.ridge;
-    std::vector<cv::Point3d> pts3d = _latest_detection.points_3d;
-
-    const int w = frame.cols;
-    const int h = frame.rows;
-
-    auto fit = [&](const cv::Mat& img) {
-        cv::Mat out;
-        cv::resize(img, out, {w, h}, 0, 0, cv::INTER_NEAREST);
-        return out;
-    };
-
-    cv::Mat mask_bgr, ridge_bgr;
-    cv::cvtColor(mask, mask_bgr, cv::COLOR_GRAY2BGR);
-    cv::cvtColor(ridge, ridge_bgr, cv::COLOR_GRAY2BGR);
-    cv::Mat plot_bgr = render_xz_plot(pts3d, w, h);
-
-    cv::Mat top, bottom, grid;
-    cv::hconcat(std::vector<cv::Mat>{frame, fit(mask_bgr)}, top);
-    cv::hconcat(std::vector<cv::Mat>{fit(ridge_bgr), fit(plot_bgr)}, bottom);
-    cv::vconcat(std::vector<cv::Mat>{top, bottom}, grid);
-
-    const std::vector<std::string> labels = {"Frame", "Mask", "Ridge", "3D Points (XZ)"};
-    const std::vector<cv::Point> positions = {
-        {10, 30},
-        {w + 10, 30},
-        {10, h + 30},
-        {w + 10, h + 30}
-    };
-    for (size_t i = 0; i < labels.size(); ++i) {
-        cv::putText(grid, labels[i], positions[i], cv::FONT_HERSHEY_SIMPLEX,
-                    0.8, cv::Scalar(0, 255, 0), 2, cv::LINE_AA);
-    }
-
-    cv::resize(grid, grid, {int(FRAME_WIDTH / 1.5), int(FRAME_HEIGHT / 1.5)}, 0, 0, cv::INTER_NEAREST);
-    cv::imshow("Perception Debug", grid);
-
-    int key = cv::waitKey(1);
-
-    if (key == 'q' || key == 27) {
-        exit(0);
-    };   // q or ESC
-}
-
-
 // Maps pixel coords to world coords (origin at bottom-center of image)
 // pixel (960, FRAME_HEIGHT) -> world (0, 0)
 cv::Point2d Perception::image_to_robot(int x, int y) {
@@ -710,8 +658,6 @@ bool Perception::isTJunction(const Segment& bar, const Segment& stem, const cv::
     float t_bar  = bar.dir.dot(junction - bar.p1) / bar.len;
     float t_stem = stem.dir.dot(junction - stem.p1) / stem.len;
 
-    std::cout << "isTJunction t_bar=" << t_bar << "  t_stem=" << t_stem << "\n";
-
     // Junction must land in middle third of bar (not near ends)
     bool junction_on_bar_middle = (t_bar > 0.3f && t_bar < 0.7f);
 
@@ -785,7 +731,6 @@ std::optional<Perception::EndPoint> Perception::getEndpoint(const cv::Mat& ridge
     // 2. Hough
     std::vector<cv::Vec4i> lines;
     cv::HoughLinesP(binary, lines, 1, CV_PI / 180, 10, 15, 10);
-    std::cout << "Hough lines: " << lines.size() << std::endl;
 
     std::vector<Segment> raw;
     for (const auto& l : lines) {
@@ -815,7 +760,6 @@ std::optional<Perception::EndPoint> Perception::getEndpoint(const cv::Mat& ridge
         }
         merged.push_back(curr);
     }
-    std::cout << "Merged segments: " << merged.size() << std::endl;
 
     // --- 4. T-Junction Search with Bottom-Half Constraint ---
     float y_threshold = (float)ridge.rows / 2.0f;
@@ -845,7 +789,6 @@ std::optional<Perception::EndPoint> Perception::getEndpoint(const cv::Mat& ridge
             }
         }
     }
-    std::cout << "No endpoint found" << std::endl;
 
     return std::nullopt;
 }

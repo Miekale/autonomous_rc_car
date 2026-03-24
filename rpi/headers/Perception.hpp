@@ -62,7 +62,6 @@ public:
     std::optional<Position> get_latest_bullsey_point();
     std::optional<Position> get_latest_end_goal_point();
 
-    void make_debug_grid();
     void make_debug_grid_with_pursuit(
         const std::optional<Position>& target_point = std::nullopt,
         const std::optional<Position>& bullseye = std::nullopt,
