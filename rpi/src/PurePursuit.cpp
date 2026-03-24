@@ -3,7 +3,7 @@
 PurePursuit::PurePursuit(float lookAheadDist, float lookAheadTol, float K_curve, 
         float K_velocity, float maxLinearVel) : 
     lookAheadDist(lookAheadDist), lookAheadTol(lookAheadTol), K_curve(K_curve), K_velocity(K_velocity), 
-     maxLinearVel(maxLinearVel) {}
+    maxLinearVel(maxLinearVel) {}
 
 Position PurePursuit::findLookaheadPoint(Position currPos, const std::vector<Position>& path) {
     int bestIndex = 0;
@@ -20,8 +20,10 @@ Position PurePursuit::findLookaheadPoint(Position currPos, const std::vector<Pos
         if (std::abs(dst - lookAheadDist) <= lookAheadTol) {
             
             // find relative angle (in global coords) and normalize
-            float angleToPoint = std::atan2(dy , dx);
+            float angleToPoint = std::atan2(dy, dx);
             float alpha = angleToPoint - currPos.theta;
+
+            // normalize angle to [-pi, pi]
             alpha = std::atan2(std::sin(alpha), std::cos(alpha));
 
             // keep running track of position closest to heading 
