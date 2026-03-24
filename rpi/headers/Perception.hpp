@@ -62,8 +62,11 @@ public:
     std::optional<Position> get_latest_bullsey_point();
     std::optional<Position> get_latest_end_goal_point();
 
-    void make_debug_grid();
-    void make_debug_grid_with_pursuit(const Position& target_point);
+    void make_debug_grid_with_pursuit(
+        const std::optional<Position>& target_point = std::nullopt,
+        const std::optional<Position>& bullseye = std::nullopt,
+        const std::optional<Position>& end_goal = std::nullopt
+    );
 
     // ── Utility functions ─────────────────────────────────────────────────────
     cv::Point2d robot_to_image(int x, int y);
