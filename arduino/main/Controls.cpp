@@ -52,12 +52,10 @@ Controls::Controls() {
     accum_error_w = 0.0f;
 
     target_state = Vec3();
-    error_state = Vec3();
     estimated_state = Vec3();
 }
 
-Here's the corrected step_50hz:
-cppFloatPair Controls::step_50hz(float a_x, float w_l_enc, float w_r_enc, float pps_vl, float pps_w) {
+FloatPair Controls::step_50hz(float a_x, float w_l_enc, float w_r_enc, float pps_vl, float pps_w) {
     // Forward kinematics
     FloatPair speed = forward_kinematics(w_l_enc, w_r_enc);
     sensor[0] = speed.first;   // measured v
@@ -69,8 +67,8 @@ cppFloatPair Controls::step_50hz(float a_x, float w_l_enc, float w_r_enc, float 
     last_time    = now;
 
     // KF 
-    auto [pred_state, pred_P] = predict_step(A, estimated_state, P_covariance, Q);
-    auto [est_state, est_P]   = correct_step(sensor, H, R, pred_state, pred_P);
+    auto [pred_state, pred_P] = predict_step(A, estimated_state, P_covariance, Q_enc);
+    auto [est_state, est_P]   = correct_step(sensor, H_enc, R_enc, pred_state, pred_P);
 
     estimated_state = est_state;
     P_covariance    = est_P;
