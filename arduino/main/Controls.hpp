@@ -29,9 +29,15 @@ public:
     );
 
     const Mat3 Q_enc = Mat3(
-        1.0f, 0.0f, 0.0f,
-        0.0f, 1.0f, 0.0f,
-        0.0f, 0.0f, 1.0f
+        0.1f, 0.0f, 0.0f,
+        0.0f, 0.1f, 0.0f,
+        0.0f, 0.0f, 0.1f
+    );
+
+    const Mat3 P_covariance = Mat3(
+        100.0f, 0.0f, 0.0f, 
+        0.0f, 100.0f, 0.0f,
+        0.0f, 0.0f, 100.0f
     );
 
     const Mat3 H_enc = Mat3(
@@ -47,7 +53,7 @@ public:
     uint32_t last_time;
     uint32_t time_delta;
     Vec3 sensor;
-    Mat3 P_covariance;
+    
     Vec3 target_state;
 
     float kpv;

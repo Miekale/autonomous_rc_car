@@ -15,7 +15,7 @@ private:
     uint16_t prevRaw = 0;
     long totalTicks = 0;
 
-    float velocity;
+    float velocity = 0.0f;
 
     static const uint8_t ADDR = 0x36;
     static const uint8_t ANGLE_REG = 0x0C;

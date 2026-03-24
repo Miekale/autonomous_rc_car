@@ -41,15 +41,17 @@ EncoderAS5600 rightEncoder(ENCODER_R_SDA, ENCODER_R_SCL);
 
 void setup() {
   Serial.begin(38400);
-  robot = new RobotController(leftEncoder, rightEncoder, imu, claw_servo, 
-        claw_servo_pin, MOTOR_L_HIGH_PIN, MOTOR_L_LOW_PIN, 
-        MOTOR_R_HIGH_PIN, MOTOR_R_LOW_PIN);  handler = new PacketHandler(Serial, *robot);
-  serv.attach(6);
-  //handler->rpiHandshake();
-  Serial.println("Handshake done");
-  serv.write(60);
+  // robot = new RobotController(leftEncoder, rightEncoder, imu, claw_servo, 
+  //       claw_servo_pin, MOTOR_L_HIGH_PIN, MOTOR_L_LOW_PIN, 
+  //       MOTOR_R_HIGH_PIN, MOTOR_R_LOW_PIN);  handler = new PacketHandler(Serial, *robot);
+  // serv.attach(6);
+  // //handler->rpiHandshake();
+  // Serial.println("Handshake done");
+  // serv.write(60);
 }
 
-void loop() {
-  robot->set_m_l_speed(-0.2);
+void loop() {++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++---
+  leftEncoder.update(1.0f);
+  Serial.println(leftEncoder.getAngle());
+  //robot->set_m_l_speed(-0.2);
 } 

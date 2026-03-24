@@ -63,7 +63,7 @@ void EncoderAS5600::update(float dt) {
     else if (delta < -2048) delta += 4096;
 
     totalTicks += delta;
-    velocity = (delta * (2.0f * PI / 4096.0f)) / dt;  // rad/s
+    velocity = ((float)delta * (2.0f * PI / 4096.0f)) / dt;  // rad/s
     prevRaw = currentRaw;
 }
 
