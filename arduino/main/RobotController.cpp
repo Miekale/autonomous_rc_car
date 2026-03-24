@@ -69,16 +69,6 @@ void RobotController::set_m_r_speed(float percent) {
 
 void RobotController::execute_v_w_command(float v, float w) {
     // If v > 0 then start running both
-<<<<<<< Updated upstream
-    float vl = 0;
-    float vr = 0;
-    Serial.print("v: ");
-    Serial.print(v);
-    Serial.print("w: ");
-    Serial.print(w);
-
-    linalg::FloatPair pair = Controls::inverse_kinematics(v, w);
-=======
     float a_x = _imu.getX();
 
     uint32_t now = millis();
@@ -92,22 +82,11 @@ void RobotController::execute_v_w_command(float v, float w) {
     float w_r = _right_encoder.getVelocity();
 
     linalg::FloatPair pair = _controls.step_50hz(a_x, w_l, w_r, v, w);
->>>>>>> Stashed changes
 
     // angular velocities
     vl = pair.first / max_angular_velocity;
     vr = pair.second / max_angular_velocity;
 
-<<<<<<< Updated upstream
-    Serial.print("vl: ");
-    Serial.print(vl);
-    Serial.print("vr: ");
-    Serial.println(vr);
-
-    set_m_l_speed(vl);
-    set_m_r_speed(vr);
-=======
     set_m_l_speed(wl);
     set_m_r_speed(wr); // TODO: this is left compensation
->>>>>>> Stashed changes
 }
