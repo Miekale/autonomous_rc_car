@@ -7,7 +7,7 @@ PurePursuit::PurePursuit(float lookAheadDist, float lookAheadTol, float K_curve,
 
 Position PurePursuit::findLookaheadPoint(Position currPos, const std::vector<Position>& path) {
     int bestIndex = 0;
-    float minDist = std::numeric_limits<float>::max();
+    float minCost = std::numeric_limits<float>::max();
     bool foundInRing = false;
 
     float lastAngle = 0.0f;
@@ -33,9 +33,11 @@ Position PurePursuit::findLookaheadPoint(Position currPos, const std::vector<Pos
 
             // keep running track of position closest to heading 
             float absAlpha = std::abs(alpha);
-            if (distError < minDist && absAlpha < angleTol) {
+
+            float cost = distError + std::abs(absAlpha - lastAngle) * 2;
+            if (cost < minCost) {
                 bestIndex = i;
-                minDist = distError;
+                minCost = cost;
                 foundInRing = true;
             }
         }
