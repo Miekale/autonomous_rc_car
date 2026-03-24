@@ -51,5 +51,24 @@ void setup() {
 }
 
 void loop() {
-  robot->set_m_l_speed(-0.2);
+//  robot->set_m_l_speed(0.3);
+//  robot->set_m_r_speed(0.3 * LEFT_COMPENSATION);
+//  
+//  delay(1000);
+//
+//  robot->set_m_l_speed(0);
+//  robot->set_m_r_speed(0);
+//
+//  delay(1000);
+//
+//  robot->set_m_l_speed(-0.3);
+//  robot->set_m_r_speed(-0.3 * LEFT_COMPENSATION);
+//
+//  delay(1000);
+//
+//  robot->set_m_l_speed(0);
+//  robot->set_m_r_speed(0);
+//
+//  delay(1000);
+    handler->update();
 } 

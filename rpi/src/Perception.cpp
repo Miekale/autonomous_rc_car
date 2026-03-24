@@ -23,13 +23,15 @@ static double now_sec()
 // Constructor / Destructor
 // ─────────────────────────────────────────────────────────────────────────────
 
-Perception::Perception(std::string camera_device, bool video_file, bool show_debug_plots)
+Perception::Perception(std::string camera_device, bool video_file, bool debug)
 {
     if (video_file) {
         std::cout << "looking for: " << camera_device << std::endl;
         _cap = cv::VideoCapture(camera_device);
     } else {
         _cap = cv::VideoCapture(std::stoi(camera_device));
+        _cap.set(cv::CAP_PROP_FRAME_HEIGHT, FRAME_HEIGHT);
+        _cap.set(cv::CAP_PROP_FRAME_WIDTH, FRAME_WIDTH);
     }
 
     if (!_cap.isOpened()) {
@@ -43,6 +45,9 @@ Perception::Perception(std::string camera_device, bool video_file, bool show_deb
         flat.insert(flat.end(), row.begin(), row.end());
 
     _camera_matrix = cv::Mat(3, 3, CV_64F, flat.data()).clone();
+    
+    // adjusting for different video width
+    _camera_matrix.at<double>(0, 2) = _camera_matrix.at<double>(0, 2) - (1920.0 - FRAME_WIDTH) / 2.0;
 
     // Distortion coefficients (1×N)
     std::vector<double> dist_flat(DISTORTION_COEFFICIENTS.begin(), DISTORTION_COEFFICIENTS.end());
@@ -50,7 +55,8 @@ Perception::Perception(std::string camera_device, bool video_file, bool show_deb
 
     // Latest BGR frame
     _latest_bgr_frame = cv::Mat();
-    _show_debug_plots = show_debug_plots;
+    _latest_detection = DetectionResult();
+    _debug = debug;
 }
 
 Perception::~Perception() {}
@@ -76,6 +82,19 @@ cv::Mat Perception::get_red_mask(const cv::Mat& bgr_image) const
     return mask;
 }
 
+cv::Mat Perception::get_blue_mask(const cv::Mat& bgr_image) const
+{
+    cv::Mat blurred;
+    cv::GaussianBlur(bgr_image, blurred, cv::Size(5, 5), 0);
+
+    cv::Mat hsv;
+    cv::cvtColor(blurred, hsv, cv::COLOR_BGR2HSV);
+
+    cv::Mat mask;
+    cv::inRange(hsv, _lower_blue, _upper_blue, mask);
+    return mask;
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Step 2 – Morphological cleanup
 // ─────────────────────────────────────────────────────────────────────────────
@@ -94,7 +113,7 @@ cv::Mat Perception::clean_mask(const cv::Mat& mask) const
 // Step 3 – Ridge / medial-axis extraction via distance-transform local maxima
 // ─────────────────────────────────────────────────────────────────────────────
 
-cv::Mat Perception::extract_ridge(const cv::Mat& mask, int height_filter) const
+cv::Mat Perception::extract_ridge(const cv::Mat& mask, int height_filter, int width_filter) const
 {
     // Distance transform (float32)
     cv::Mat dist;
@@ -118,6 +137,13 @@ cv::Mat Perception::extract_ridge(const cv::Mat& mask, int height_filter) const
     if (height_filter > 0 && height_filter < ridge.rows)
         ridge(cv::Rect(0, 0, ridge.cols, height_filter)).setTo(0);
 
+    
+    // defualt cut off none - but can cut off side points on the side horizontally
+    const int x_margin = ridge.cols * width_filter / 100;
+    ridge(cv::Rect(0, 0, x_margin, ridge.rows)).setTo(0);
+    ridge(cv::Rect(ridge.cols - x_margin, 0, x_margin, ridge.rows)).setTo(0);
+    
+
     return ridge;
 }
 
@@ -132,9 +158,9 @@ std::vector<cv::Point2f> Perception::extract_points(const cv::Mat& ridge) const
 
     std::vector<cv::Point2f> pts;
     pts.reserve(pts_i.size());
-    for (const auto& p : pts_i)
+    for (const auto& p : pts_i) {
         pts.emplace_back(static_cast<float>(p.x), static_cast<float>(p.y));
-
+    }
     return pts;
 }
 
@@ -218,12 +244,16 @@ cv::Mat Perception::render_xz_plot(const std::vector<cv::Point3d>& pts3d,
     return plot;
 }
 
-cv::Mat Perception::make_debug_grid(const cv::Mat& frame,
-                                    const cv::Mat& mask,
-                                    const cv::Mat& ridge,
-                                    const std::vector<cv::Point3d>& pts3d) const
+void Perception::make_debug_grid()
 {
-    std::cout << "making debug grid" << std::endl;
+    if (!_debug) {
+        return;
+    }
+    cv::Mat frame = _latest_bgr_frame;
+    cv::Mat mask = _latest_detection.mask;
+    cv::Mat ridge = _latest_detection.ridge;
+    std::vector<cv::Point3d> pts3d = _latest_detection.points_3d;
+
     const int w = frame.cols;
     const int h = frame.rows;
 
@@ -255,35 +285,124 @@ cv::Mat Perception::make_debug_grid(const cv::Mat& frame,
                     0.8, cv::Scalar(0, 255, 0), 2, cv::LINE_AA);
     }
 
-    cv::resize(grid, grid, {int(1920 / 1.5), int(1080 / 1.5)}, 0, 0, cv::INTER_NEAREST);
-    return grid;
+    cv::resize(grid, grid, {int(FRAME_WIDTH / 1.5), int(FRAME_HEIGHT / 1.5)}, 0, 0, cv::INTER_NEAREST);
+    cv::imshow("Perception Debug", grid);
+
+    int key = cv::waitKey(1);
+
+    if (key == 'q' || key == 27) {
+        exit(0);
+    };   // q or ESC
+}
+
+
+// Maps pixel coords to world coords (origin at bottom-center of image)
+// pixel (960, FRAME_HEIGHT) -> world (0, 0)
+cv::Point2d Perception::image_to_robot(int x, int y) {
+    return {static_cast<double>(FRAME_HEIGHT - y), static_cast<double>(x - FRAME_WIDTH / 2)};  // x=forward, y=lateral
+}
+
+// Maps world coords back to pixel coords
+// world (0, 0) -> pixel (960, FRAME_HEIGHT)
+cv::Point2d Perception::robot_to_image(int x, int y) {
+    return {static_cast<double>(y + FRAME_WIDTH / 2), static_cast<double>(FRAME_HEIGHT - x)};
+}
+
+
+void Perception::make_debug_grid_with_pursuit(const Position& target_point)
+{
+    if (!_debug) {
+        return;
+    }
+    
+    cv::Mat frame = _latest_bgr_frame;
+    cv::Mat mask = _latest_detection.mask;
+    cv::Mat ridge = _latest_detection.ridge;
+    std::vector<cv::Point3d> pts3d = _latest_detection.points_3d;
+
+    if (_latest_bgr_frame.empty() || _latest_detection.mask.empty() || _latest_detection.ridge.empty() || _latest_detection.points_3d.empty()) {
+        std::cout << "No latest detection available" << std::endl;
+        return;
+    }
+
+    const int w = frame.cols;
+    const int h = frame.rows;
+    auto fit = [&](const cv::Mat& img) {
+        cv::Mat out;
+        cv::resize(img, out, {w, h}, 0, 0, cv::INTER_NEAREST);
+        return out;
+    };
+
+    cv::Mat mask_bgr, ridge_bgr;
+    cv::cvtColor(mask, mask_bgr, cv::COLOR_GRAY2BGR);
+
+    // --- Work on a colour copy of the ridge at its native size first ---
+    cv::cvtColor(ridge, ridge_bgr, cv::COLOR_GRAY2BGR);
+
+    // Centre of both circles is the image origin (0,0) in target coords.
+    const cv::Point origin_px = robot_to_image(0, 0);
+
+    // Inner tolerance circle
+    cv::circle(ridge_bgr, origin_px,
+               static_cast<int>(LOOK_AHEAD_DISTANCE - LOOK_AHEAD_TOL),
+               cv::Scalar(255, 165, 0),   // orange
+               1, cv::LINE_AA);
+
+    // Nominal look-ahead circle
+    cv::circle(ridge_bgr, origin_px,
+               static_cast<int>(LOOK_AHEAD_DISTANCE),
+               cv::Scalar(0, 255, 255),   // yellow
+               2, cv::LINE_AA);
+
+    // Outer tolerance circle
+    cv::circle(ridge_bgr, origin_px,
+               static_cast<int>(LOOK_AHEAD_DISTANCE + LOOK_AHEAD_TOL),
+               cv::Scalar(255, 165, 0),   // orange
+               1, cv::LINE_AA);
+
+    // --- Target point ---
+    std::cout << "target point X, y: " << target_point.x << ", " << target_point.y << std::endl;
+    const cv::Point2d tp_px = robot_to_image(target_point.x, target_point.y);
+    std::cout << "target point px X, y: " << tp_px.x << ", " << tp_px.y << std::endl;
+    cv::drawMarker(ridge_bgr, cv::Point(tp_px.x, tp_px.y),
+                   cv::Scalar(255, 255, 0),          // red
+                   cv::MARKER_CROSS, 30, 4, cv::LINE_AA);
+    std::cout << "ridge_bgr size: " << ridge_bgr.cols << " x " << ridge_bgr.rows << std::endl;
+    std::cout << "frame size: " << frame.cols << " x " << frame.rows << std::endl;
+
+    // --- Rest of the grid assembly (unchanged) ---
+    cv::Mat plot_bgr = render_xz_plot(pts3d, w, h);
+    cv::Mat top, bottom, grid;
+    cv::hconcat(std::vector<cv::Mat>{frame, fit(mask_bgr)}, top);
+    cv::hconcat(std::vector<cv::Mat>{fit(ridge_bgr), fit(plot_bgr)}, bottom);
+    cv::vconcat(std::vector<cv::Mat>{top, bottom}, grid);
+
+    const std::vector<std::string> labels = {"Frame", "Mask", "Ridge", "3D Points (XZ)"};
+    const std::vector<cv::Point> positions = {
+        {10, 30},
+        {w + 10, 30},
+        {10, h + 30},
+        {w + 10, h + 30}
+    };
+    for (size_t i = 0; i < labels.size(); ++i) {
+        cv::putText(grid, labels[i], positions[i], cv::FONT_HERSHEY_SIMPLEX,
+                    0.8, cv::Scalar(0, 255, 0), 2, cv::LINE_AA);
+    }
+
+    cv::resize(grid, grid, {int(FRAME_WIDTH / 1.5), int(FRAME_HEIGHT / 1.5)}, 0, 0, cv::INTER_NEAREST);
+
+    cv::imshow("Perception Debug", grid);
+    int key = cv::waitKey(1);
+    if (key == 'q' || key == 27) {
+        exit(0);
+    };   // q or ESC
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Public pipeline – detect_line
 // ─────────────────────────────────────────────────────────────────────────────
-std::vector<cv::Vec3f> Perception::detect_bullseye()
-{
-    std::vector<cv::Vec3f> circles;
-
-    // cv::HoughCircles(
-    //     _latest_detection.ridge,
-    //     circles,
-    //     cv::HOUGH_GRADIENT,
-    //     1,                            // dp
-    //     _latest_bgr_frame.rows / 2,  // minDist between centres
-    //     100,                          // param1: Canny threshold
-    //     10,                          // param2: accumulator threshold (lower = more detections)
-    //     50,                   // minRadius
-    //     100               // maxRadius
-    // );
-    
-    return circles;
-}
-
-
 Perception::DetectionResult 
-Perception::detect_line(const cv::Mat& bgr_image, int height_filter, bool debug)
+Perception::detect_line(const cv::Mat& bgr_image, int height_filter)
 {
     double t0 = now_sec();
 
@@ -293,7 +412,7 @@ Perception::detect_line(const cv::Mat& bgr_image, int height_filter, bool debug)
     auto pts2d    = extract_points(ridge);             double t4 = now_sec();
     auto pts3d    = points2d_to_3d(pts2d);             double t5 = now_sec();
 
-    if (debug)
+    if (_debug)
     {
         std::cout << "=======================\n"
                   << "Detection took   " << (t5 - t0) << " s\n"
@@ -302,25 +421,18 @@ Perception::detect_line(const cv::Mat& bgr_image, int height_filter, bool debug)
                   << "Extract ridge    " << (t3 - t2) << " s\n"
                   << "Extract points   " << (t4 - t3) << " s\n"
                   << "Points to 3-D    " << (t5 - t4) << " s\n"
+                //   << "num of clusters       " << clusters.size() << " s\n"
                   << "=======================\n";
     }
 
-    if (_show_debug_plots) {
-        cv::Mat grid = make_debug_grid(bgr_image, mask, ridge, pts3d);
-        cv::imshow("Perception Debug", grid);
+    _latest_detection = DetectionResult(mask, ridge, pts2d, pts3d);
 
-        int key = cv::waitKey(1);
-        if (key == 'q' || key == 27) {
-            _show_debug_plots = false;
-        };   // q or ESC
-    }
-
-    return { mask, ridge, pts2d, pts3d };
+    return _latest_detection;
 }
 
-void Perception::set_debug_plots_enabled(bool enabled)
+void Perception::set_debug(bool enabled)
 {
-    _show_debug_plots = enabled;
+    _debug = enabled;
 }
 
 
@@ -329,6 +441,7 @@ cv::Mat Perception::get_latest_bgr_frame()
     std::lock_guard<std::mutex> lock(_mtx);
     _cap.read(_latest_bgr_frame);
     _has_frame = true;
+    std::cout << "get_latest_bgr_frame: frame size: " << _latest_bgr_frame.cols << " x " << _latest_bgr_frame.rows << std::endl;
     
     return _latest_bgr_frame;
 }
@@ -346,33 +459,372 @@ std::vector<Position> Perception::get_latest_line_follow_points()
     }
 
     std::cout << "get_latest_line_follow_points: calling detect line" << std::endl;
-    auto result = detect_line(frame, HEIGHT_FILTER, /*debug=*/false);
+    auto result = detect_line(frame, HEIGHT_FILTER);
 
     std::vector<Position> positions;
     positions.reserve(result.points_3d.size());
     for (const auto& p : result.points_3d)
         positions.push_back({p.x, p.z, 0});
 
+
+    return positions;
+}
+
+std::vector<Position> Perception::get_latest_line_follow_points_2d()
+{
+    cv::Mat frame;
+    {
+        std::lock_guard<std::mutex> lock(_mtx);
+        if (!_has_frame) {
+            return {};
+        }
+        
+        frame = _latest_bgr_frame;
+    }
+
+    auto result = detect_line(frame, HEIGHT_FILTER);
+
+    std::vector<Position> positions;
+    positions.reserve(result.points_2d.size());
+    for (const auto& p : result.points_2d) {
+        auto robot_coords = image_to_robot(p.x, p.y);
+        positions.push_back({robot_coords.x, robot_coords.y, 0});
+    }
+
     return positions;
 }
 
 std::optional<Position> Perception::get_latest_bullsey_point()
 {
-    std::vector<cv::Vec3f> circles = detect_bullseye();
-    if (circles.empty()) {
-        return std::nullopt;
+    double t0 = now_sec();
+    cv::Mat blue_mask = get_blue_mask(_latest_bgr_frame);
+
+    double t1 = now_sec();
+    blue_mask = clean_mask(blue_mask);
+
+    double t2 = now_sec();
+    cv::Mat blue_ridge = extract_ridge(blue_mask, 0, 10);
+
+    double t3 = now_sec();
+    auto blue_pts2d = extract_points(blue_ridge);
+
+    double t4 = now_sec();
+    std::optional<cv::Point2f> blue_center = get_center_point(blue_pts2d);
+
+    double t5 = now_sec();
+
+    if (_debug)
+    {
+        std::cout << "3D blue points: " << blue_pts2d.size() << std::endl;
+
+        std::cout << "=======================\n"
+                  << "End goal detection took   " << (t5 - t0) << " s\n"
+                  << "Mask             " << (t1 - t0) << " s\n"
+                  << "Clean            " << (t2 - t1) << " s\n"
+                  << "Ridge            " << (t3 - t2) << " s\n"
+                  << "Extract points   " << (t4 - t3) << " s\n"
+                  << "Center detection " << (t5 - t4) << " s\n"
+                << "=======================\n";
     }
 
-    // TODO: select best circle point
+    if (blue_center.has_value()) {
+        Position center_camera_frame = Position{ _latest_bgr_frame.rows - blue_center.value().y, blue_center.value().x - _latest_bgr_frame.cols / 2, 0};
+        if (center_camera_frame.x < BULLSEYE_DISTANCE_STOP_LF) {
+            return Position{0, 0, 0};
+        }
+        return center_camera_frame;
+    }
 
-    // Get 3d point of bullseye
-    auto pts3d = points2d_to_3d({ { circles[0][0], circles[0][1] } });
-
-    return Position{ pts3d[0].x, pts3d[0].y, std::atan2(pts3d[0].x, pts3d[0].z) };
+    return std::nullopt;
 }
 
 std::optional<Position> Perception::get_latest_end_goal_point()
 {
-    // TODO: implement end-goal detection
+    auto endpoint = getEndpoint(_latest_detection.ridge, _latest_detection.points_2d);
+    std::cout << "Endpoint: " << endpoint.has_value() << std::endl;
+    if (endpoint.has_value()) {
+        std::cout << "Found endpoint at: " << endpoint->junction << "\n";
+        return Position{endpoint.value().junction.x, endpoint.value().junction.y, 0};
+    }
+    return std::nullopt;
+}
+
+std::optional<cv::Point2f> Perception::get_center_point(std::vector<cv::Point2f>& pts2d/*, vector<cv::Point3d>& blue_pts3d*/) const
+{
+    // 2D centroid from pts2d
+    if (pts2d.empty()) {
+        return std::nullopt;
+    }
+
+    cv::Point2f center_2d(0, 0);
+    for (auto& pt : pts2d) {
+        center_2d += cv::Point2f(pt.x, pt.y);
+    }
+
+    center_2d /= static_cast<float>(pts2d.size());
+    
+    return center_2d;
+}
+
+
+// Endpoint detection
+
+std::vector<float> Perception::getRidgeAngles(const cv::Mat& ridge, const std::vector<cv::Point2f>& points_2d) const
+/*
+Sobel should get the gradient of the ridge image, which is perpindicular to the edge
+we then rotate to get the angle of the edge itself, as those two properties are 90 degrees apart
+*/
+{
+    cv::Mat dx, dy;
+    cv::Sobel(ridge, dx, CV_32F, 1, 0, 3);
+    cv::Sobel(ridge, dy, CV_32F, 0, 1, 3);
+
+    std::vector<float> angles;
+    angles.reserve(points_2d.size());
+
+    for(auto&p : points_2d) {
+        int x = (int)p.x;
+        int y = (int)p.y;
+
+        float gx = dx.at<float>(y, x);
+        float gy = dy.at<float>(y, x);
+        float angle = std::atan2(gx, -gy);
+        if (angle < 0) angle += CV_PI; // atan2 returns [-pi, pi], we want [0, pi]
+
+        angles.push_back(angle);
+    }
+    return angles;
+}
+
+std::vector<std::vector<cv::Point2f>> Perception::clusterRidgePoints(const std::vector<cv::Point2f>& points_2d, const std::vector<float>& angles) const
+/*
+We bucket the points by their angle, the two largest buckets would be the primary lines
+*/ 
+{
+    int bins = 4; // arb
+    std::vector<std::vector<cv::Point2f>> clusters(bins);
+
+    for (size_t i = 0; i < points_2d.size(); ++i) {
+        float angle = angles[i];
+        int bin = (int)(angle / CV_PI * bins) % bins;
+        clusters[bin].push_back(points_2d[i]);
+    }
+    return clusters;
+}
+
+
+Perception::Segment Perception::fitSegmentToCluster(const std::vector<cv::Point2f>& cluster) const
+/*
+Called after clusterRidgePoints, operate on each bin and fit a line to the points in that bucket
+https://docs.opencv.org/3.4/js_contour_features_fitLine.html foir fitline
+
+only run if there are points inside lol
+*/
+{
+    cv::Vec4f line;
+    // get a unit direction and point on the line representing the clusters trend
+    cv::fitLine(cluster, line, cv::DIST_L2, 0, 0.01, 0.01);
+
+    cv::Point2f direction = {line[0], line[1]}; // vx, vy
+    cv::Point2f point_on_line = {line[2], line[3]}; // x0, y0
+
+    float tmin = std::numeric_limits<float>::infinity();
+    float tmax = -std::numeric_limits<float>::infinity();
+
+    int min_index = -1;
+    int max_index = -1;
+
+    for (int i = 0; i < (int)cluster.size(); i++) {
+        float t = direction.dot(cluster[i] - point_on_line);
+        if (t < tmin) {
+            tmin = t;
+            min_index = i;
+        }
+        if (t > tmax) {
+            tmax = t;
+            max_index = i;
+        }
+    }
+
+    Segment clusterSegment;
+    clusterSegment.p1 = point_on_line + tmin * direction; // negative ot it
+    clusterSegment.p2 = point_on_line + tmax * direction;
+    clusterSegment.dir = direction;
+    clusterSegment.len    = tmax - tmin;
+    clusterSegment.min_index = min_index;
+    clusterSegment.max_index = max_index;
+
+    return clusterSegment;
+}
+
+/*
+need a function that loops through the segments and finds which ones are parallel
+*/
+
+std::vector<Perception::Segment> Perception::getBestSegments(const std::vector<std::vector<cv::Point2f>>& clusters) const
+/*
+find top 2 segments
+*/
+{
+    std::vector<Segment> significant_segments;
+    auto sorted = clusters;
+    std::sort(sorted.begin(), sorted.end(), 
+        [](const auto& a, const auto& b){ return a.size() > b.size(); });
+
+    for (int i = 0; i < 2 && i < sorted.size(); i++) {
+        if (sorted[i].size() > MIN_POINTS)  // filter noise
+            significant_segments.push_back(fitSegmentToCluster(sorted[i]));
+    }
+
+    return significant_segments;
+}
+
+cv::Point2f Perception::findIntersection(const Segment& s1, const Segment& s2) const {
+    // Solve: s1.p1 + t*s1.dir = s2.p1 + u*s2.dir
+    cv::Point2f dp = s2.p1 - s1.p1;
+    float cross = s1.dir.x * s2.dir.y - s1.dir.y * s2.dir.x;
+    float t = (dp.x * s2.dir.y - dp.y * s2.dir.x) / cross;
+    return s1.p1 + t * s1.dir;
+}
+
+
+bool Perception::isTJunction(const Segment& bar, const Segment& stem, const cv::Point2f& junction) const {
+    float t_bar  = bar.dir.dot(junction - bar.p1) / bar.len;
+    float t_stem = stem.dir.dot(junction - stem.p1) / stem.len;
+
+    std::cout << "isTJunction t_bar=" << t_bar << "  t_stem=" << t_stem << "\n";
+
+    // Junction must land in middle third of bar (not near ends)
+    bool junction_on_bar_middle = (t_bar > 0.3f && t_bar < 0.7f);
+
+    // Junction must land near the end of stem (within 20%)
+    bool junction_at_stem_end = (t_stem < 0.2f || t_stem > 0.8f);
+
+    // Bar must be significantly longer than stem
+    bool bar_longer = (bar.len > stem.len * 1.5f);
+
+    // Bar must be roughly horizontal (dir.x dominates)
+    bool bar_horizontal = (std::abs(bar.dir.x) > 0.7f);
+
+    // Stem must be roughly vertical (dir.y dominates)  
+    bool stem_vertical = (std::abs(stem.dir.y) > 0.7f);
+
+    std::cout << "  bar_middle=" << junction_on_bar_middle
+              << "  stem_end=" << junction_at_stem_end
+              << "  bar_longer=" << bar_longer
+              << "  bar_horiz=" << bar_horizontal
+              << "  stem_vert=" << stem_vertical << "\n";
+
+    return junction_on_bar_middle && junction_at_stem_end 
+        && bar_longer && bar_horizontal && stem_vertical;
+}
+
+Perception::EndPoint Perception::buildEndPoint(const Segment& bar, const Segment& stem, const cv::Point2f& junction) const {
+    EndPoint ep;
+    ep.junction = junction;
+    ep.line_straight = stem;
+
+    // Left and right are the two halves of the bar
+    // Split bar at junction point
+    ep.line_left.p1  = junction;
+    ep.line_left.p2  = bar.p1;   // one end of bar
+    ep.line_right.p1 = junction;
+    ep.line_right.p2 = bar.p2;   // other end of bar
+
+    return ep;
+}
+
+
+bool Perception::shouldMerge(const Segment& s1, const Segment& s2) const {
+    // 1. Angular similarity (within ~8 degrees)
+    float dot = std::abs(s1.dir.dot(s2.dir));
+    if (dot < 0.99f) return false;
+
+    // 2. Lateral distance (Are the lines on the same "track"?)
+    cv::Point2f v = s2.p1 - s1.p1;
+    float dist = std::abs(v.x * s1.dir.y - v.y * s1.dir.x);
+    if (dist > 15.0f) return false; // Allowed 15px of "wobble"
+
+    // 3. Longitudinal gap (The "Bridge")
+    float t2_p1 = s1.dir.dot(s2.p1 - s1.p1);
+    float t2_p2 = s1.dir.dot(s2.p2 - s1.p1);
+    float min_t = std::min(t2_p1, t2_p2);
+    float max_t = std::max(t2_p1, t2_p2);
+
+    // Allowing a 120px gap to bridge your Seg 0 and Seg 2 (90px apart)
+    return !(min_t > s1.len + 120.0f || max_t < -120.0f);
+}
+std::optional<Perception::EndPoint> Perception::getEndpoint(const cv::Mat& ridge, const std::vector<cv::Point2f>& points_2d) const {
+    if (points_2d.size() < 20) return std::nullopt;
+
+    // 1. Rasterize
+    cv::Mat binary = cv::Mat::zeros(ridge.size(), CV_8UC1);
+    for (const auto& p : points_2d) {
+        if (p.x >= 0 && p.x < binary.cols && p.y >= 0 && p.y < binary.rows)
+            binary.at<uchar>((int)p.y, (int)p.x) = 255;
+    }
+
+    // 2. Hough
+    std::vector<cv::Vec4i> lines;
+    cv::HoughLinesP(binary, lines, 1, CV_PI / 180, 10, 15, 10);
+    
+    std::vector<Segment> raw;
+    for (const auto& l : lines) {
+        Segment s; s.p1 = {(float)l[0], (float)l[1]}; s.p2 = {(float)l[2], (float)l[3]};
+        cv::Point2f d = s.p2 - s.p1; s.len = cv::norm(d); s.dir = d * (1.0f / s.len);
+        raw.push_back(s);
+    }
+
+    // 3. Aggressive Merge (Bridges gaps in the Bar)
+    std::vector<Segment> merged;
+    std::vector<bool> used(raw.size(), false);
+    for (size_t i = 0; i < raw.size(); ++i) {
+        if (used[i]) continue;
+        Segment curr = raw[i]; used[i] = true;
+        for (size_t j = i + 1; j < raw.size(); ++j) {
+            if (!used[j] && shouldMerge(curr, raw[j])) {
+                float t3 = curr.dir.dot(raw[j].p1 - curr.p1);
+                float t4 = curr.dir.dot(raw[j].p2 - curr.p1);
+                float tMin = std::min({0.0f, curr.len, t3, t4});
+                float tMax = std::max({0.0f, curr.len, t3, t4});
+                cv::Point2f newP1 = curr.p1 + tMin * curr.dir;
+                curr.p2 = curr.p1 + tMax * curr.dir;
+                curr.p1 = newP1;
+                curr.len = tMax - tMin;
+                used[j] = true;
+            }
+        }
+        merged.push_back(curr);
+    }
+
+    // --- 4. T-Junction Search with Bottom-Half Constraint ---
+    float y_threshold = (float)ridge.rows / 2.0f;
+
+    for (const auto& bar : merged) {
+        for (const auto& stem : merged) {
+            if (&bar == &stem) continue;
+
+            if (std::abs(bar.dir.dot(stem.dir)) > 0.45f) continue;
+
+            cv::Point2f tips[2] = {stem.p1, stem.p2};
+            for (int k = 0; k < 2; ++k) {
+                float t = bar.dir.dot(tips[k] - bar.p1);
+                cv::Point2f proj = bar.p1 + t * bar.dir;
+
+                // NEW: Constraint Check
+                // Only accept if the junction point is in the bottom 50% of the image
+                if (proj.y < y_threshold) continue; 
+
+                float dist = cv::norm(tips[k] - proj);
+                float normT = t / bar.len;
+
+                if (dist < 45.0f && (normT > -0.1f && normT < 1.1f)) {
+                    // Success!
+                    return buildEndPoint(bar, stem, proj);
+                }
+            }
+        }
+    }
+
     return std::nullopt;
 }

@@ -132,7 +132,7 @@ if len(objpoints) > 0 and len(imgpoints) > 0:
         )
 
 if input("Write parmas to file? (y / n)") == "y":
-    with open("../config/intrinsics.yaml", "w") as f:
+    with open("intrinsics.yaml", "w") as f:
         mtx = mtx.tolist()
         dist = dist.flatten()[:5].tolist()
 

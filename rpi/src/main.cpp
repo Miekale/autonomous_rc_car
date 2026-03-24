@@ -9,6 +9,8 @@
 #include <thread>
 #include <iostream>
 
+bool debug = true;
+
 int main() {
     Serial serial("/dev/ttyACM0", SERIAL_BAUD_RATE);
     PurePursuit pure_pursuit(
@@ -19,21 +21,23 @@ int main() {
         MAX_LINEAR_VELOCITY
     );
     RescueController rescue_controller;
-    Perception perception("0", false, false);
-    AutonomyFSM fsm(&pure_pursuit, &perception, &rescue_controller, &serial);
+    // Perception perception("0", false, debug);
+    Perception perception("/home/utils/ending.mov", true, true);
+    AutonomyFSM fsm(&pure_pursuit, &perception, &rescue_controller, &serial, debug);
 
     std::cout << "DONE INI" << std::endl;
     std::cout << "Stepping FSM..." << std::endl;
     while (true) {
-        auto start = std::chrono::steady_clock::now();
+        // auto start = std::chrono::steady_clock::now();
 
         fsm.step();
 
-        auto elapsed = std::chrono::steady_clock::now() - start;
-        auto sleep_for = PERIOD - elapsed;
+        // auto elapsed = std::chrono::steady_clock::now() - start;
+        // auto sleep_for = PERIOD - elapsed;
 
-        if (sleep_for > std::chrono::duration<double>(0)) {
-            std::this_thread::sleep_for(sleep_for);
-        }
+        // if (sleep_for > std::chrono::duration<double>(0)) {
+          //  std::this_thread::sleep_for(sleep_for);
+        //}
     }
 }
+
