@@ -309,7 +309,10 @@ cv::Point2d Perception::robot_to_image(int x, int y) {
 }
 
 
-void Perception::make_debug_grid_with_pursuit(const Position& target_point)
+void Perception::make_debug_grid_with_pursuit(
+    const std::optional<Position>& target_point, 
+    const std::optional<Position>& bullseye, 
+    const std::optional<Position>& end_goal)
 {
     if (!_debug) {
         return;
@@ -319,11 +322,6 @@ void Perception::make_debug_grid_with_pursuit(const Position& target_point)
     cv::Mat mask = _latest_detection.mask;
     cv::Mat ridge = _latest_detection.ridge;
     std::vector<cv::Point3d> pts3d = _latest_detection.points_3d;
-
-    if (_latest_bgr_frame.empty() || _latest_detection.mask.empty() || _latest_detection.ridge.empty() || _latest_detection.points_3d.empty()) {
-        std::cout << "No latest detection available" << std::endl;
-        return;
-    }
 
     const int w = frame.cols;
     const int h = frame.rows;
@@ -361,14 +359,35 @@ void Perception::make_debug_grid_with_pursuit(const Position& target_point)
                1, cv::LINE_AA);
 
     // --- Target point ---
-    std::cout << "target point X, y: " << target_point.x << ", " << target_point.y << std::endl;
-    const cv::Point2d tp_px = robot_to_image(target_point.x, target_point.y);
-    std::cout << "target point px X, y: " << tp_px.x << ", " << tp_px.y << std::endl;
-    cv::drawMarker(ridge_bgr, cv::Point(tp_px.x, tp_px.y),
-                   cv::Scalar(255, 255, 0),          // red
-                   cv::MARKER_CROSS, 30, 4, cv::LINE_AA);
-    std::cout << "ridge_bgr size: " << ridge_bgr.cols << " x " << ridge_bgr.rows << std::endl;
-    std::cout << "frame size: " << frame.cols << " x " << frame.rows << std::endl;
+    if (target_point.has_value()) {
+        std::cout << "target point x, y: " << target_point.value().x << ", " << target_point.value().y << std::endl;
+        const cv::Point2d tp_px = robot_to_image(target_point.value().x, target_point.value().y);
+
+        cv::drawMarker(ridge_bgr, cv::Point(tp_px.x, tp_px.y),
+                    cv::Scalar(255, 255, 0),          // red
+                    cv::MARKER_CROSS, 30, 4, cv::LINE_AA);
+    }
+
+    // --- Bullseye point ---
+    if (bullseye.has_value()) {
+        std::cout << "bullseye point x, y: " << bullseye.value().x << ", " << bullseye.value().y << std::endl;
+        const cv::Point2d tp_px = robot_to_image(bullseye.value().x, bullseye.value().y);
+
+        cv::circle(ridge_bgr, cv::Point(tp_px.x, tp_px.y),
+                   10,                              // radius
+                   cv::Scalar(255, 0, 0),          
+                   1, cv::LINE_AA);
+    }
+
+    // --- End goal point ---
+    if (end_goal.has_value()) {
+        std::cout << "end goal point x, y: " << end_goal.value().x << ", " << end_goal.value().y << std::endl;
+        const cv::Point2d tp_px = robot_to_image(end_goal.value().x, end_goal.value().y);
+
+        cv::drawMarker(ridge_bgr, cv::Point(tp_px.x, tp_px.y),
+                    cv::Scalar(0, 255, 0),          // red
+                    cv::MARKER_CROSS, 30, 4, cv::LINE_AA);
+    }
 
     // --- Rest of the grid assembly (unchanged) ---
     cv::Mat plot_bgr = render_xz_plot(pts3d, w, h);
@@ -441,7 +460,6 @@ cv::Mat Perception::get_latest_bgr_frame()
     std::lock_guard<std::mutex> lock(_mtx);
     _cap.read(_latest_bgr_frame);
     _has_frame = true;
-    std::cout << "get_latest_bgr_frame: frame size: " << _latest_bgr_frame.cols << " x " << _latest_bgr_frame.rows << std::endl;
     
     return _latest_bgr_frame;
 }
@@ -458,7 +476,6 @@ std::vector<Position> Perception::get_latest_line_follow_points()
         frame = _latest_bgr_frame;
     }
 
-    std::cout << "get_latest_line_follow_points: calling detect line" << std::endl;
     auto result = detect_line(frame, HEIGHT_FILTER);
 
     std::vector<Position> positions;
@@ -515,9 +532,9 @@ std::optional<Position> Perception::get_latest_bullsey_point()
 
     if (_debug)
     {
-        std::cout << "3D blue points: " << blue_pts2d.size() << std::endl;
 
         std::cout << "=======================\n"
+                  << "3D blue points: " << blue_pts2d.size() << "\n"
                   << "End goal detection took   " << (t5 - t0) << " s\n"
                   << "Mask             " << (t1 - t0) << " s\n"
                   << "Clean            " << (t2 - t1) << " s\n"
@@ -528,8 +545,9 @@ std::optional<Position> Perception::get_latest_bullsey_point()
     }
 
     if (blue_center.has_value()) {
-        Position center_camera_frame = Position{ _latest_bgr_frame.rows - blue_center.value().y, blue_center.value().x - _latest_bgr_frame.cols / 2, 0};
-        if (center_camera_frame.x < BULLSEYE_DISTANCE_STOP_LF) {
+        auto robot_frame = image_to_robot(blue_center.value().x, blue_center.value().y);
+        Position center_camera_frame {robot_frame.x, robot_frame.y};
+        if (robot_frame.x < BULLSEYE_DISTANCE_STOP_LF) {
             return Position{0, 0, 0};
         }
         return center_camera_frame;
@@ -541,10 +559,10 @@ std::optional<Position> Perception::get_latest_bullsey_point()
 std::optional<Position> Perception::get_latest_end_goal_point()
 {
     auto endpoint = getEndpoint(_latest_detection.ridge, _latest_detection.points_2d);
-    std::cout << "Endpoint: " << endpoint.has_value() << std::endl;
+
     if (endpoint.has_value()) {
-        std::cout << "Found endpoint at: " << endpoint->junction << "\n";
-        return Position{endpoint.value().junction.x, endpoint.value().junction.y, 0};
+        auto robot_frame = image_to_robot(endpoint.value().junction.x, endpoint.value().junction.y);
+        return Position{robot_frame.x, robot_frame.y, 0};
     }
     return std::nullopt;
 }
@@ -767,7 +785,8 @@ std::optional<Perception::EndPoint> Perception::getEndpoint(const cv::Mat& ridge
     // 2. Hough
     std::vector<cv::Vec4i> lines;
     cv::HoughLinesP(binary, lines, 1, CV_PI / 180, 10, 15, 10);
-    
+    std::cout << "Hough lines: " << lines.size() << std::endl;
+
     std::vector<Segment> raw;
     for (const auto& l : lines) {
         Segment s; s.p1 = {(float)l[0], (float)l[1]}; s.p2 = {(float)l[2], (float)l[3]};
@@ -796,6 +815,7 @@ std::optional<Perception::EndPoint> Perception::getEndpoint(const cv::Mat& ridge
         }
         merged.push_back(curr);
     }
+    std::cout << "Merged segments: " << merged.size() << std::endl;
 
     // --- 4. T-Junction Search with Bottom-Half Constraint ---
     float y_threshold = (float)ridge.rows / 2.0f;
@@ -825,6 +845,7 @@ std::optional<Perception::EndPoint> Perception::getEndpoint(const cv::Mat& ridge
             }
         }
     }
+    std::cout << "No endpoint found" << std::endl;
 
     return std::nullopt;
 }

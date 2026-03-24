@@ -110,9 +110,7 @@ void AutonomyFSM::do_lf_pre_rescue() {
     std::pair<float, float> command = _pure_pursuit->getControl(Position({0,0,0}), target_point, lf_points);
     std::cout << "do_lf_pre_rescue: Got command " << command.first << ", " << command.second << std::endl;
 
-    if (_debug) {
-        _perception->make_debug_grid_with_pursuit(target_point);
-    }
+    
     _rescue_controller->step_pursuit(*_serial, command, timestamp);
     _serial->readAndPrint();
     
@@ -126,11 +124,16 @@ void AutonomyFSM::do_lf_pre_rescue() {
     }
 
     std::optional<Position> end_goal = _perception->get_latest_end_goal_point();
-    if (end_goal) {
+    if (end_goal.has_value()) {
         end_goal.value().x = end_goal->x;
         end_goal.value().y = end_goal->y;
         std::cout << "End goal at: " << end_goal.value().x << ", " << end_goal.value().y << std::endl;
     }
+
+    if (_debug) {
+        _perception->make_debug_grid_with_pursuit(target_point, bullseye, end_goal);
+    }
+
     std::cout <<"do_lf_pre_rescue: done" << std::endl;
 
 }
