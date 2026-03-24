@@ -22,7 +22,7 @@ int main() {
     );
     RescueController rescue_controller;
     // Perception perception("0", false, debug);
-    Perception perception("/home/utils/new_cam_30fps_1080p.mov", true, true);
+    Perception perception("/home/utils/ending.mov", true, true);
     AutonomyFSM fsm(&pure_pursuit, &perception, &rescue_controller, &serial, debug);
 
     std::cout << "DONE INI" << std::endl;

@@ -80,6 +80,9 @@ private:
 
     int MIN_POINTS = 3; // min points for a cluster to be considered a valid line
 
+    int FRAME_WIDTH = 1620;
+    int FRAME_HEIGHT = 1080;
+
     // ── HSV thresholds ────────────────────────────────────────────────────────
     // Part A: "red" wrap-around (174–179)
     const cv::Scalar _lower_A = cv::Scalar(170, 50, 200);

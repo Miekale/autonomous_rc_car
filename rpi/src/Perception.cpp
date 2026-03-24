@@ -30,8 +30,8 @@ Perception::Perception(std::string camera_device, bool video_file, bool debug)
         _cap = cv::VideoCapture(camera_device);
     } else {
         _cap = cv::VideoCapture(std::stoi(camera_device));
-        _cap.set(cv::CAP_PROP_FRAME_HEIGHT, 1080);
-        _cap.set(cv::CAP_PROP_FRAME_WIDTH, 1920);
+        _cap.set(cv::CAP_PROP_FRAME_HEIGHT, FRAME_HEIGHT);
+        _cap.set(cv::CAP_PROP_FRAME_WIDTH, FRAME_WIDTH);
     }
 
     if (!_cap.isOpened()) {
@@ -45,6 +45,9 @@ Perception::Perception(std::string camera_device, bool video_file, bool debug)
         flat.insert(flat.end(), row.begin(), row.end());
 
     _camera_matrix = cv::Mat(3, 3, CV_64F, flat.data()).clone();
+    
+    // adjusting for different video width
+    _camera_matrix.at<double>(0, 2) = _camera_matrix.at<double>(0, 2) - (1920.0 - FRAME_WIDTH) / 2.0;
 
     // Distortion coefficients (1×N)
     std::vector<double> dist_flat(DISTORTION_COEFFICIENTS.begin(), DISTORTION_COEFFICIENTS.end());
@@ -282,7 +285,7 @@ void Perception::make_debug_grid()
                     0.8, cv::Scalar(0, 255, 0), 2, cv::LINE_AA);
     }
 
-    cv::resize(grid, grid, {int(1920 / 1.5), int(1080 / 1.5)}, 0, 0, cv::INTER_NEAREST);
+    cv::resize(grid, grid, {int(FRAME_WIDTH / 1.5), int(FRAME_HEIGHT / 1.5)}, 0, 0, cv::INTER_NEAREST);
     cv::imshow("Perception Debug", grid);
 
     int key = cv::waitKey(1);
@@ -294,15 +297,15 @@ void Perception::make_debug_grid()
 
 
 // Maps pixel coords to world coords (origin at bottom-center of image)
-// pixel (960, 1080) -> world (0, 0)
+// pixel (960, FRAME_HEIGHT) -> world (0, 0)
 cv::Point2d Perception::image_to_robot(int x, int y) {
-    return {1080.0 - y, x - 960.0};  // x=forward, y=lateral
+    return {FRAME_HEIGHT - y, x - FRAME_WIDTH/2};  // x=forward, y=lateral
 }
 
 // Maps world coords back to pixel coords
-// world (0, 0) -> pixel (960, 1080)
+// world (0, 0) -> pixel (960, FRAME_HEIGHT)
 cv::Point2d Perception::robot_to_image(int x, int y) {
-    return {static_cast<int>(y + 960.0), static_cast<int>(1080.0 - x)};
+    return {static_cast<int>(y + FRAME_WIDTH/2), static_cast<int>(FRAME_HEIGHT - x)};
 }
 
 
@@ -364,6 +367,8 @@ void Perception::make_debug_grid_with_pursuit(const Position& target_point)
     cv::drawMarker(ridge_bgr, cv::Point(tp_px.x, tp_px.y),
                    cv::Scalar(255, 255, 0),          // red
                    cv::MARKER_CROSS, 30, 4, cv::LINE_AA);
+    std::cout << "ridge_bgr size: " << ridge_bgr.cols << " x " << ridge_bgr.rows << std::endl;
+    std::cout << "frame size: " << frame.cols << " x " << frame.rows << std::endl;
 
     // --- Rest of the grid assembly (unchanged) ---
     cv::Mat plot_bgr = render_xz_plot(pts3d, w, h);
@@ -384,7 +389,7 @@ void Perception::make_debug_grid_with_pursuit(const Position& target_point)
                     0.8, cv::Scalar(0, 255, 0), 2, cv::LINE_AA);
     }
 
-    cv::resize(grid, grid, {int(1920 / 1.5), int(1080 / 1.5)}, 0, 0, cv::INTER_NEAREST);
+    cv::resize(grid, grid, {int(FRAME_WIDTH / 1.5), int(FRAME_HEIGHT / 1.5)}, 0, 0, cv::INTER_NEAREST);
 
     cv::imshow("Perception Debug", grid);
     int key = cv::waitKey(1);
@@ -436,6 +441,7 @@ cv::Mat Perception::get_latest_bgr_frame()
     std::lock_guard<std::mutex> lock(_mtx);
     _cap.read(_latest_bgr_frame);
     _has_frame = true;
+    std::cout << "get_latest_bgr_frame: frame size: " << _latest_bgr_frame.cols << " x " << _latest_bgr_frame.rows << std::endl;
     
     return _latest_bgr_frame;
 }
@@ -483,7 +489,6 @@ std::vector<Position> Perception::get_latest_line_follow_points_2d()
     for (const auto& p : result.points_2d) {
         auto robot_coords = image_to_robot(p.x, p.y);
         positions.push_back({robot_coords.x, robot_coords.y, 0});
-        std::cout << positions.back().x << ", " << positions.back().y << std::endl;
     }
 
     return positions;
@@ -536,7 +541,7 @@ std::optional<Position> Perception::get_latest_bullsey_point()
 std::optional<Position> Perception::get_latest_end_goal_point()
 {
     auto endpoint = getEndpoint(_latest_detection.ridge, _latest_detection.points_2d);
-
+    std::cout << "Endpoint: " << endpoint.has_value() << std::endl;
     if (endpoint.has_value()) {
         std::cout << "Found endpoint at: " << endpoint->junction << "\n";
         return Position{endpoint.value().junction.x, endpoint.value().junction.y, 0};

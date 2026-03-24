@@ -106,6 +106,7 @@ void AutonomyFSM::do_lf_pre_rescue() {
     // TODO: the heading angle in world coords is always 0
     Position target_point = _pure_pursuit->findLookaheadPoint(Position({0,0,0}), lf_points);
     std::cout << "do_lf_pre_rescue: target_point " << target_point.x << ", " << target_point.y << std::endl;
+
     std::pair<float, float> command = _pure_pursuit->getControl(Position({0,0,0}), target_point, lf_points);
     std::cout << "do_lf_pre_rescue: Got command " << command.first << ", " << command.second << std::endl;
 
@@ -123,7 +124,15 @@ void AutonomyFSM::do_lf_pre_rescue() {
         std::cout << "Updated closest bullseye to: " << bullseye.value().x << ", " << bullseye.value().y << std::endl;
         _closest_bullseye.theta = bullseye->theta;
     }
+
+    std::optional<Position> end_goal = _perception->get_latest_end_goal_point();
+    if (end_goal) {
+        end_goal.value().x = end_goal->x;
+        end_goal.value().y = end_goal->y;
+        std::cout << "End goal at: " << end_goal.value().x << ", " << end_goal.value().y << std::endl;
+    }
     std::cout <<"do_lf_pre_rescue: done" << std::endl;
+
 }
 
 void AutonomyFSM::do_rescuing() {
@@ -158,7 +167,7 @@ void AutonomyFSM::do_lf_post_rescue() {
     // Query perception for goal/dropoff
     std::optional<Position> end_goal = _perception->get_latest_end_goal_point();
     if (end_goal) {
-        _goal = *end_goal;
+        _goal = end_goal.value();
     }
 }
 
