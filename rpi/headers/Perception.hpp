@@ -65,6 +65,10 @@ public:
     void make_debug_grid();
     void make_debug_grid_with_pursuit(const Position& target_point);
 
+    // ── Utility functions ─────────────────────────────────────────────────────
+    cv::Point2d robot_to_image(int x, int y);
+    cv::Point2d image_to_robot(int x, int y);
+
 private:
     // ── Camera parameters ─────────────────────────────────────────────────────
     cv::Mat _camera_matrix;

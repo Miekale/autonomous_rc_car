@@ -7,18 +7,23 @@ PurePursuit::PurePursuit(float lookAheadDist, float lookAheadTol, float K_curve,
 
 Position PurePursuit::findLookaheadPoint(Position currPos, const std::vector<Position>& path) {
     int bestIndex = 0;
-    float minAngleError = std::numeric_limits<float>::max();
+    float minDist = std::numeric_limits<float>::max();
     bool foundInRing = false;
+
+    float lastAngle = 0.0f;
+    if (hasLastPosition) {
+        lastAngle = std::atan2(lastPosition.x, lastPosition.y);
+    }
 
     // Loop through all points
     for (int i = 0; i < path.size(); ++i) {
         float dx = path[i].x - currPos.x;
         float dy = path[i].y - currPos.y;
         float dst = std::sqrt(dx * dx + dy * dy);
+        float distError = std::abs(dst - lookAheadDist);
 
         // Check if the position is within a tolerance of look ahead
-        if (std::abs(dst - lookAheadDist) <= lookAheadTol) {
-            
+        if (distError <= lookAheadTol) {
             // find relative angle (in global coords) and normalize
             float angleToPoint = std::atan2(dy, dx);
             float alpha = angleToPoint - currPos.theta;
@@ -28,9 +33,9 @@ Position PurePursuit::findLookaheadPoint(Position currPos, const std::vector<Pos
 
             // keep running track of position closest to heading 
             float absAlpha = std::abs(alpha);
-            if (absAlpha < minAngleError) {
-                minAngleError = absAlpha;
+            if (distError < minDist && absAlpha < angleTol) {
                 bestIndex = i;
+                minDist = distError;
                 foundInRing = true;
             }
         }

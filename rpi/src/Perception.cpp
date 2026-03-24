@@ -155,9 +155,9 @@ std::vector<cv::Point2f> Perception::extract_points(const cv::Mat& ridge) const
 
     std::vector<cv::Point2f> pts;
     pts.reserve(pts_i.size());
-    for (const auto& p : pts_i)
+    for (const auto& p : pts_i) {
         pts.emplace_back(static_cast<float>(p.x), static_cast<float>(p.y));
-
+    }
     return pts;
 }
 
@@ -292,6 +292,20 @@ void Perception::make_debug_grid()
     };   // q or ESC
 }
 
+
+// Maps pixel coords to world coords (origin at bottom-center of image)
+// pixel (960, 1080) -> world (0, 0)
+cv::Point2d Perception::image_to_robot(int x, int y) {
+    return {1080.0 - y, x - 960.0};  // x=forward, y=lateral
+}
+
+// Maps world coords back to pixel coords
+// world (0, 0) -> pixel (960, 1080)
+cv::Point2d Perception::robot_to_image(int x, int y) {
+    return {static_cast<int>(y + 960.0), static_cast<int>(1080.0 - x)};
+}
+
+
 void Perception::make_debug_grid_with_pursuit(const Position& target_point)
 {
     if (!_debug) {
@@ -322,27 +336,8 @@ void Perception::make_debug_grid_with_pursuit(const Position& target_point)
     // --- Work on a colour copy of the ridge at its native size first ---
     cv::cvtColor(ridge, ridge_bgr, cv::COLOR_GRAY2BGR);
 
-    const int rw = ridge_bgr.cols;
-    const int rh = ridge_bgr.rows;
-
-    // Target-space → pixel mapping.
-    // Origin (0,0) is centre-bottom of the ridge image.
-    // X grows right, Y (depth) grows upward.
-    // We need a scale factor: assume the ridge image covers the same
-    // physical width as `frame` at 1 px-per-px, adjust if you have a
-    // dedicated scale constant.
-    auto target_to_ridge_px = [&](double tx, double ty) -> cv::Point {
-        // tx=0 → rw/2,  ty=0 → rh-1
-        // scale: 1 target-unit == 1 pixel (change divisor if you have a
-        // physical scale, e.g. RIDGE_SCALE_PX_PER_M)
-        int px = static_cast<int>(rw / 2.0 + tx);
-        int py = static_cast<int>(rh  - 1  - ty);
-        return {px, py};
-    };
-
-    // --- Look-ahead circles (draw before the target point so it sits on top) ---
     // Centre of both circles is the image origin (0,0) in target coords.
-    const cv::Point origin_px = target_to_ridge_px(0.0, 0.0);
+    const cv::Point origin_px = robot_to_image(0, 0);
 
     // Inner tolerance circle
     cv::circle(ridge_bgr, origin_px,
@@ -364,12 +359,11 @@ void Perception::make_debug_grid_with_pursuit(const Position& target_point)
 
     // --- Target point ---
     std::cout << "target point X, y: " << target_point.x << ", " << target_point.y << std::endl;
-    const cv::Point tp_px = target_to_ridge_px(target_point.y, target_point.x);
-    cv::drawMarker(ridge_bgr, tp_px,
-                   cv::Scalar(255, 0, 0),          // red
+    const cv::Point2d tp_px = robot_to_image(target_point.x, target_point.y);
+    std::cout << "target point px X, y: " << tp_px.x << ", " << tp_px.y << std::endl;
+    cv::drawMarker(ridge_bgr, cv::Point(tp_px.x, tp_px.y),
+                   cv::Scalar(255, 255, 0),          // red
                    cv::MARKER_CROSS, 30, 4, cv::LINE_AA);
-    cv::circle(ridge_bgr, tp_px, 5,
-               cv::Scalar(0, 0, 255), -1, cv::LINE_AA);
 
     // --- Rest of the grid assembly (unchanged) ---
     cv::Mat plot_bgr = render_xz_plot(pts3d, w, h);
@@ -482,16 +476,19 @@ std::vector<Position> Perception::get_latest_line_follow_points_2d()
         frame = _latest_bgr_frame;
     }
 
-    std::cout << "get_latest_line_follow_points: calling detect line" << std::endl;
     auto result = detect_line(frame, HEIGHT_FILTER);
 
     std::vector<Position> positions;
     positions.reserve(result.points_2d.size());
-    for (const auto& p : result.points_2d)
-        positions.push_back({1080 - p.y, p.x - 1920/2, 0});
+    for (const auto& p : result.points_2d) {
+        auto robot_coords = image_to_robot(p.x, p.y);
+        positions.push_back({robot_coords.x, robot_coords.y, 0});
+        std::cout << positions.back().x << ", " << positions.back().y << std::endl;
+    }
 
     return positions;
 }
+
 std::optional<Position> Perception::get_latest_bullsey_point()
 {
     double t0 = now_sec();
