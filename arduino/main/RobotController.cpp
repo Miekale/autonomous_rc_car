@@ -4,15 +4,17 @@
 // RobotController.cpp
 RobotController::RobotController(EncoderAS5600& left_encoder, EncoderAS5600& right_encoder, 
         IMUGY61& imu, Servo& servo, int servo_pin, int motor_L_high_pin, int motor_L_low_pin, 
-        int motor_R_high_pin, int motor_R_low_pin)
+        int motor_L_en_pin, int motor_R_high_pin, int motor_R_low_pin, int motor_R_en_pin)
     : _left_encoder(left_encoder), _right_encoder(right_encoder), _imu(imu), _servo(servo), 
-    _m_L_high_pin(motor_L_high_pin), _m_L_low_pin(motor_L_low_pin), _m_R_high_pin(motor_R_high_pin), 
-    _m_R_low_pin(motor_R_low_pin) 
+    _m_L_high_pin(motor_L_high_pin), _m_L_low_pin(motor_L_low_pin), _m_L_en_pin(motor_L_en_pin),
+     _m_R_high_pin(motor_R_high_pin), _m_R_low_pin(motor_R_low_pin), _m_R_en_pin(motor_R_en_pin)
 {
     pinMode(_m_L_high_pin, OUTPUT);
     pinMode(_m_L_low_pin, OUTPUT);
     pinMode(_m_R_high_pin, OUTPUT);
     pinMode(_m_R_low_pin, OUTPUT);
+    pinMode(_m_R_en_pin,   OUTPUT);
+    pinMode(_m_L_en_pin,   OUTPUT);
     _last_enc_time = millis();
     _last_time_second = millis();
 }
@@ -28,21 +30,26 @@ void RobotController::closeClaw() {
 void RobotController::init_motors() {
     Serial.println("Initialized Motors");
 }
-
 void RobotController::set_m_l_speed(float percent) {
     if (percent < -1 || percent > 1) {
         Serial.println("SPEED (PERCENT) MUST BE BETWEEN 0-1");
         return;
     }
-    
-    if (percent >= 0) {
-        analogWrite(_m_L_high_pin, percent * 155 + 100);  // PWM 255 is max, 0 is min
-        analogWrite(_m_L_low_pin, 0);
+    if (abs(percent) < 0.01f) {
+        digitalWrite(_m_L_high_pin, LOW);
+        digitalWrite(_m_L_low_pin, LOW);
+        analogWrite(_m_L_en_pin, 0);
+        return;
     }
-    else {
-        analogWrite(_m_L_low_pin, abs(percent) * 155 + 100);
-        analogWrite(_m_L_high_pin, 0);
+    if (percent > 0) {
+        digitalWrite(_m_L_high_pin, HIGH);
+        digitalWrite(_m_L_low_pin, LOW);
+    } else {
+        digitalWrite(_m_L_high_pin, LOW);
+        digitalWrite(_m_L_low_pin, HIGH);
     }
+    analogWrite(_m_L_en_pin, abs(percent) * 50 + 30);
+
 
     Serial.print("LEFT: ");
     Serial.println(percent * 100);
@@ -53,15 +60,22 @@ void RobotController::set_m_r_speed(float percent) {
         Serial.println("SPEED (PERCENT) MUST BE BETWEEN 0-1");
         return;
     }
-    
-    if (percent >= 0) {
-        analogWrite(_m_R_high_pin, percent * 115 + 100);  // PWM 255 is max, 0 is min
-        analogWrite(_m_R_low_pin, 0);
+
+    if (abs(percent) < 0.01f) {
+        digitalWrite(_m_R_high_pin, LOW);
+        digitalWrite(_m_R_low_pin, LOW);
+        analogWrite(_m_R_en_pin, 0);
+        return;
     }
-    else {
-        analogWrite(_m_R_low_pin, abs(percent) * 115 + 100);
-        analogWrite(_m_R_high_pin, 0);
+
+    if (percent > 0) {
+        digitalWrite(_m_R_high_pin, HIGH);
+        digitalWrite(_m_R_low_pin, LOW);
+    } else {
+        digitalWrite(_m_R_high_pin, LOW);
+        digitalWrite(_m_R_low_pin, HIGH);
     }
+    analogWrite(_m_R_en_pin, abs(percent) * 50 + 30);
 
     Serial.print("RIGHT: ");
     Serial.println(percent * 100);
@@ -75,6 +89,9 @@ void RobotController::execute_v_w_command(float v, float w) {
     float dt = (now - _last_enc_time) / 1000.0f;
     _last_enc_time = now;
 
+    Serial.print(F("dt: ")); Serial.println(dt);  // add here
+
+
     _left_encoder.update(dt);
     _right_encoder.update(dt);
 
@@ -83,6 +100,8 @@ void RobotController::execute_v_w_command(float v, float w) {
 
     linalg::FloatPair pair = _controls.step(a_x, w_l, w_r, v, w);
 
+    // TODO: this controls implementation doesn't make sense, rewrite it
+    // do the PID loop much closer to motors, output velocity error from PID, output PWM directly?
     // angular velocities
     w_l = pair.first / max_angular_velocity;
     w_r = pair.second / max_angular_velocity;

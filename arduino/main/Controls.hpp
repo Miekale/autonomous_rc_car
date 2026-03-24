@@ -16,25 +16,25 @@ public:
     static const float LENGTH_WHEEL_TO_WHEEL = 160.0;
 
     // 0.02 comes from estimated 50hz
-    const Mat3 A = Mat3(
-        1.0f, 0.02f, 0.0f,
-        0.0f, 1.0f,  0.0f,
-        0.0f, 0.0f,  1.0f
+    Mat3 A = Mat3(
+        0.80f, 0.0, 0.0f,
+        0.0f,  0.90f, 0.0f,
+        0.0f,  0.0f,  0.80f
     );
 
     const Mat3 R_enc = Mat3(
-        0.1f, 0.0f, 0.0f,
-        0.0f, 0.1f, 0.0f,
-        0.0f, 0.0f, 0.1f
+        50.0f, 0.0f,    0.0f,
+        0.0f,    50.0f, 0.0f,
+        0.0f,    0.0f,    50.0f
     );
 
     const Mat3 Q_enc = Mat3(
-        0.1f, 0.0f, 0.0f,
-        0.0f, 0.1f, 0.0f,
-        0.0f, 0.0f, 0.1f
+        10.0f, 0.0f, 0.0f,
+        0.0f, 50.0f, 0.0f,
+        0.0f, 0.0f, 10.0f
     );
 
-    const Mat3 P_covariance = Mat3(
+    Mat3 P_covariance = Mat3(
         100.0f, 0.0f, 0.0f, 
         0.0f, 100.0f, 0.0f,
         0.0f, 0.0f, 100.0f
@@ -68,11 +68,13 @@ public:
 
     Vec3 estimated_state;
 
-    StatePair predict_step(Mat3 A, Vec3 prev_state, Mat3 prev_P, Mat3 Q);
+    StatePair predict_step(Mat3 A, Vec3 prev_state, Mat3 prev_P, Mat3 Q, uint32_t time_delta, float a_x);
     StatePair correct_step(Vec3 z_sensor, Mat3 H, Mat3 R, Vec3 pred_state, Mat3 pred_P);
 
     static FloatPair forward_kinematics(float w_r, float w_l);
     static FloatPair inverse_kinematics(float v, float w);
+
+    void init(float w_l, float w_r);
 };
 
 #endif

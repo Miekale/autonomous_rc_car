@@ -2,6 +2,7 @@
 #define ENCODER_AS5600_H
 
 #include <SoftWire.h>
+#include <Arduino.h>
 
 class EncoderAS5600 {
 private:
