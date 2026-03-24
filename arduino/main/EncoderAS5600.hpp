@@ -22,14 +22,15 @@ private:
 
     uint16_t readRaw();
 
+    bool _invert = false;
+
 public:
     EncoderAS5600(uint8_t sda, uint8_t scl);
 
 
     void update(float dt);
     float getVelocity() const;
-    void init(uint32_t clock = 10000);
-    void update();
+    void init(bool invert = false, uint32_t clock = 10000);
 
     float getAngle() const;
     long  getTicks() const;

@@ -3,9 +3,11 @@
 EncoderAS5600::EncoderAS5600(uint8_t sda, uint8_t scl)
     : wire(sda, scl), sdaPin(sda), sclPin(scl) {}
 
-void EncoderAS5600::init(uint32_t clock) {
+void EncoderAS5600::init(bool invert = false, uint32_t clock = 10000) {
     pinMode(sdaPin, INPUT_PULLUP);
     pinMode(sclPin, INPUT_PULLUP);
+
+    _invert = invert;
 
     wire.setTxBuffer(txBuffer, 32);
     wire.setRxBuffer(rxBuffer, 32);
@@ -62,8 +64,10 @@ void EncoderAS5600::update(float dt) {
     if (delta > 2048)       delta -= 4096;
     else if (delta < -2048) delta += 4096;
 
+    if (_invert) delta = -delta;
+
     totalTicks += delta;
-    velocity = ((float)delta * (2.0f * PI / 4096.0f)) / dt;  // rad/s
+    velocity = (delta * (2.0f * PI / 4096.0f)) / dt;  // rad/s
     prevRaw = currentRaw;
 }
 

@@ -50,8 +50,13 @@ void setup() {
   // serv.write(60);
 }
 
-void loop() {++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++---
+void loop() {
+  leftEncoder.init();
   leftEncoder.update(1.0f);
+  rightEncoder.init(true);
+  rightEncoder.update(1.0f);
+  Serial.print(rightEncoder.getAngle());
+  Serial.print(F(" "));
   Serial.println(leftEncoder.getAngle());
   //robot->set_m_l_speed(-0.2);
 } 
