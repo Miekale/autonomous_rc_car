@@ -153,7 +153,7 @@ void AutonomyFSM::do_lf_post_rescue() {
     }
 
     // TODO: send command to Arduino via interfacing library
-    //_rescue_controller->step_pursuit(*_serial, command, timestamp);
+    // _rescue_controller->step_pursuit(*_serial, command, timestamp);
 
     // Query perception for goal/dropoff
     std::optional<Position> end_goal = _perception->get_latest_end_goal_point();

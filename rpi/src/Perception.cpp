@@ -413,13 +413,6 @@ Perception::detect_line(const cv::Mat& bgr_image, int height_filter)
     auto pts2d    = extract_points(ridge);             double t4 = now_sec();
     auto pts3d    = points2d_to_3d(pts2d);             double t5 = now_sec();
 
-    auto endpoint = getEndpoint(ridge, pts2d);
-    if (endpoint) {
-        std::cout << "Found endpoint at: " << endpoint->junction << "\n";
-    } else {
-        std::cout << "No endpoint found\n";
-    }
-
     if (_debug)
     {
         std::cout << "=======================\n"
@@ -545,6 +538,12 @@ std::optional<Position> Perception::get_latest_bullsey_point()
 
 std::optional<Position> Perception::get_latest_end_goal_point()
 {
+    auto endpoint = getEndpoint(_latest_detection.ridge, _latest_detection.points_2d);
+
+    if (endpoint.has_value()) {
+        std::cout << "Found endpoint at: " << endpoint->junction << "\n";
+        return Position{endpoint.value().junction.x, endpoint.value().junction.y, 0};
+    }
     return std::nullopt;
 }
 
@@ -565,6 +564,8 @@ std::optional<cv::Point2f> Perception::get_center_point(std::vector<cv::Point2f>
     return center_2d;
 }
 
+
+// Endpoint detection
 
 std::vector<float> Perception::getRidgeAngles(const cv::Mat& ridge, const std::vector<cv::Point2f>& points_2d) const
 /*
@@ -684,16 +685,6 @@ cv::Point2f Perception::findIntersection(const Segment& s1, const Segment& s2) c
     return s1.p1 + t * s1.dir;
 }
 
-// bool Perception::isTJunction(const Segment& bar, const Segment& stem, const cv::Point2f& junction) const {
-//     // Project junction onto each segment, check normalized position [0,1]
-//     float t_bar  = bar.dir.dot(junction - bar.p1) / bar.len;
-//     float t_stem = stem.dir.dot(junction - stem.p1) / stem.len;
-
-//     bool junction_on_bar_middle = (t_bar  > 0.2f && t_bar  < 0.8f);
-//     bool junction_at_stem_end   = (t_stem < 0.2f || t_stem > 0.8f);
-
-//     return junction_on_bar_middle && junction_at_stem_end;
-// }
 
 bool Perception::isTJunction(const Segment& bar, const Segment& stem, const cv::Point2f& junction) const {
     float t_bar  = bar.dir.dot(junction - bar.p1) / bar.len;
