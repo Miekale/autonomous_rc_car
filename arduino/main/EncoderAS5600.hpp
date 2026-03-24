@@ -15,6 +15,8 @@ private:
     uint16_t prevRaw = 0;
     long totalTicks = 0;
 
+    float velocity;
+
     static const uint8_t ADDR = 0x36;
     static const uint8_t ANGLE_REG = 0x0C;
 
@@ -23,6 +25,9 @@ private:
 public:
     EncoderAS5600(uint8_t sda, uint8_t scl);
 
+
+    void update(float dt);
+    float getVelocity() const;
     void init(uint32_t clock = 10000);
     void update();
 

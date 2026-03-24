@@ -50,9 +50,25 @@ public:
         1.0f / WHEEL_RADIUS_MM, 0.0f, -0.5f * LENGTH_WHEEL_TO_WHEEL / WHEEL_RADIUS_MM
     );
 
+    Mat3 IMU_Iteration_Matrix = Mat3(
+        0.0f, 0.0f, 0.0f,
+        0.0f, 1.0f, 0.0f,
+        0.0f, 0.0f, 1.0f
+    );
+
+    // shit for kalman
+    Mat3 P_covariance;  
+    Mat3 A, Q, H, R; // set in constructor
+
+    float out_w_r = 0.0f;
+    float out_w_l = 0.0f;
+
     Controls();
 
-    void step_50hz();
+    FloatPair step_50hz(const linalg::Vec3& sensor, const linalg::Vec3& t);
+
+    uint64_t last_time;
+    uint64_t time_delta;
 
     Vec3 target_state;
     Vec3 error_state;

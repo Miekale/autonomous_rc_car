@@ -1,4 +1,4 @@
-#include "Control.hpp"
+#include "Controls.hpp"
 #include "LinAlg.hpp"
 
 #include <Arduino.h>
@@ -56,33 +56,43 @@ Controls::Controls() {
     estimated_state = Vec3();
 }
 
-void Controls::step_50hz() {
-    // Assume we somehow get the target state given to us (interfacing to do later)
-    target_state = Vec3(); // [v, a_x, w] where a_x is unused in control path
-    target_state[0] = 1;
+Here's the corrected step_50hz:
+cppFloatPair Controls::step_50hz(float a_x, float w_l_enc, float w_r_enc, float pps_vl, float pps_w) {
+    // Forward kinematics
+    FloatPair speed = forward_kinematics(w_l_enc, w_r_enc);
+    sensor[0] = speed.first;   // measured v
+    sensor[2] = speed.second;  // measured w
 
-    // Get latest state estimation
+    // save time and time delta
+    uint32_t now = millis();
+    time_delta   = now - last_time;
+    last_time    = now;
 
-    // Individual PID loops
-    float u_v = pid_calculate(target_state[0], 
-                              estimated_state[0], 
-                              kpv, 
-                              kiv, 
-                              accum_error_v, 
-                              0.02); // 0.02s = 50hz
+    // KF 
+    auto [pred_state, pred_P] = predict_step(A, estimated_state, P_covariance, Q);
+    auto [est_state, est_P]   = correct_step(sensor, H, R, pred_state, pred_P);
 
-    float u_w = pid_calculate(target_state[2], 
-                              estimated_state[2], 
-                              kpw, 
-                              kiw, 
-                              accum_error_w, 
-                              0.02); // 0.02s = 50hz
+    estimated_state = est_state;
+    P_covariance    = est_P;
 
-    FloatPair control_bldc_output = inverse_kinematics(u_v, u_w);
+    // reset taget
+    target_state[0] = pps_vl;
+    target_state[2] = pps_w;
 
-    // Send left and right commands
-    float u_r = control_bldc_output.first;
-    float u_l = control_bldc_output.second;
+    float u_v = pid_calculate(target_state[0],
+                              estimated_state[0],
+                              kpv, kiv, accum_error_v,
+                              0.02f);
+
+    float u_w = pid_calculate(target_state[2],
+                              estimated_state[2],
+                              kpw, kiw, accum_error_w,
+                              0.02f);
+
+    
+    u_v += (time_delta / 1000.0f) * a_x;
+
+    return inverse_kinematics(u_v, u_w);
 }
 
 float Controls::pid_calculate(float target, float current, float kp, float ki, float &accum_error, float dt) {
@@ -147,8 +157,8 @@ FloatPair Controls::forward_kinematics(float w_r, float w_l) {
 
 FloatPair Controls::inverse_kinematics(float v, float w) {
     // Implements IK mapping from local-frame linear/angular velocities -> wheel rot speed
-    float w_r = 1 / WHEEL_RADIUS_MM * v + 1 / WHEEL_RADIUS_MM * LENGTH_WHEEL_TO_WHEEL / 2 * w; 
-    float w_l = 1 / WHEEL_RADIUS_MM * v - 1 / WHEEL_RADIUS_MM * LENGTH_WHEEL_TO_WHEEL / 2 * w; 
+    float w_r = 1.0f / WHEEL_RADIUS_MM * v + 1.0f / WHEEL_RADIUS_MM * LENGTH_WHEEL_TO_WHEEL / 2.0f * w;
+    float w_l = 1.0f / WHEEL_RADIUS_MM * v - 1.0f / WHEEL_RADIUS_MM * LENGTH_WHEEL_TO_WHEEL / 2.0f * w;
 
     return FloatPair{w_r, w_l};
 }
