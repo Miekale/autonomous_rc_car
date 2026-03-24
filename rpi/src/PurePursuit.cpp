@@ -51,10 +51,6 @@ std::pair<float, float> PurePursuit::getControl(Position currPos, Position targe
     float dx = target.x - currPos.x;
     float dy = target.y - currPos.y;
 
-    if (abs(dy) < 0.0001) {
-        return {0.0, 0.0};
-    }
-
     float turn_error = std::atan2(dy, dx);
     float distance = std::sqrt(std::pow(dx, 2) + std::pow(dy, 2));
 

@@ -9,6 +9,8 @@
 #include <thread>
 #include <iostream>
 
+bool debug = true;
+
 int main() {
     Serial serial("/dev/ttyACM0", SERIAL_BAUD_RATE);
     PurePursuit pure_pursuit(
@@ -19,9 +21,9 @@ int main() {
         MAX_LINEAR_VELOCITY
     );
     RescueController rescue_controller;
-    Perception perception("0", false, false);
-    // Perception perception("/home/utils/new_cam_30fps_1080p.mov", true, true);
-    AutonomyFSM fsm(&pure_pursuit, &perception, &rescue_controller, &serial);
+    // Perception perception("0", false, debug);
+    Perception perception("/home/utils/new_cam_30fps_1080p.mov", true, true);
+    AutonomyFSM fsm(&pure_pursuit, &perception, &rescue_controller, &serial, debug);
 
     std::cout << "DONE INI" << std::endl;
     std::cout << "Stepping FSM..." << std::endl;

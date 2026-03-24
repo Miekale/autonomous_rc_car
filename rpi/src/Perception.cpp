@@ -23,7 +23,7 @@ static double now_sec()
 // Constructor / Destructor
 // ─────────────────────────────────────────────────────────────────────────────
 
-Perception::Perception(std::string camera_device, bool video_file, bool show_debug_plots)
+Perception::Perception(std::string camera_device, bool video_file, bool debug)
 {
     if (video_file) {
         std::cout << "looking for: " << camera_device << std::endl;
@@ -52,7 +52,8 @@ Perception::Perception(std::string camera_device, bool video_file, bool show_deb
 
     // Latest BGR frame
     _latest_bgr_frame = cv::Mat();
-    _show_debug_plots = show_debug_plots;
+    _latest_detection = DetectionResult();
+    _debug = debug;
 }
 
 Perception::~Perception() {}
@@ -239,12 +240,17 @@ cv::Mat Perception::render_xz_plot(const std::vector<cv::Point3d>& pts3d,
 
     return plot;
 }
-cv::Mat Perception::make_debug_grid(const cv::Mat& frame,
-                                    const cv::Mat& mask,
-                                    const cv::Mat& ridge,
-                                    const std::vector<cv::Point3d>& pts3d) const
+
+void Perception::make_debug_grid()
 {
-    std::cout << "making debug grid" << std::endl;
+    if (!_debug) {
+        return;
+    }
+    cv::Mat frame = _latest_bgr_frame;
+    cv::Mat mask = _latest_detection.mask;
+    cv::Mat ridge = _latest_detection.ridge;
+    std::vector<cv::Point3d> pts3d = _latest_detection.points_3d;
+
     const int w = frame.cols;
     const int h = frame.rows;
 
@@ -277,14 +283,127 @@ cv::Mat Perception::make_debug_grid(const cv::Mat& frame,
     }
 
     cv::resize(grid, grid, {int(1920 / 1.5), int(1080 / 1.5)}, 0, 0, cv::INTER_NEAREST);
-    return grid;
+    cv::imshow("Perception Debug", grid);
+
+    int key = cv::waitKey(1);
+
+    if (key == 'q' || key == 27) {
+        exit(0);
+    };   // q or ESC
+}
+
+void Perception::make_debug_grid_with_pursuit(const Position& target_point)
+{
+    if (!_debug) {
+        return;
+    }
+    
+    cv::Mat frame = _latest_bgr_frame;
+    cv::Mat mask = _latest_detection.mask;
+    cv::Mat ridge = _latest_detection.ridge;
+    std::vector<cv::Point3d> pts3d = _latest_detection.points_3d;
+
+    if (_latest_bgr_frame.empty() || _latest_detection.mask.empty() || _latest_detection.ridge.empty() || _latest_detection.points_3d.empty()) {
+        std::cout << "No latest detection available" << std::endl;
+        return;
+    }
+
+    const int w = frame.cols;
+    const int h = frame.rows;
+    auto fit = [&](const cv::Mat& img) {
+        cv::Mat out;
+        cv::resize(img, out, {w, h}, 0, 0, cv::INTER_NEAREST);
+        return out;
+    };
+
+    cv::Mat mask_bgr, ridge_bgr;
+    cv::cvtColor(mask, mask_bgr, cv::COLOR_GRAY2BGR);
+
+    // --- Work on a colour copy of the ridge at its native size first ---
+    cv::cvtColor(ridge, ridge_bgr, cv::COLOR_GRAY2BGR);
+
+    const int rw = ridge_bgr.cols;
+    const int rh = ridge_bgr.rows;
+
+    // Target-space → pixel mapping.
+    // Origin (0,0) is centre-bottom of the ridge image.
+    // X grows right, Y (depth) grows upward.
+    // We need a scale factor: assume the ridge image covers the same
+    // physical width as `frame` at 1 px-per-px, adjust if you have a
+    // dedicated scale constant.
+    auto target_to_ridge_px = [&](double tx, double ty) -> cv::Point {
+        // tx=0 → rw/2,  ty=0 → rh-1
+        // scale: 1 target-unit == 1 pixel (change divisor if you have a
+        // physical scale, e.g. RIDGE_SCALE_PX_PER_M)
+        int px = static_cast<int>(rw / 2.0 + tx);
+        int py = static_cast<int>(rh  - 1  - ty);
+        return {px, py};
+    };
+
+    // --- Look-ahead circles (draw before the target point so it sits on top) ---
+    // Centre of both circles is the image origin (0,0) in target coords.
+    const cv::Point origin_px = target_to_ridge_px(0.0, 0.0);
+
+    // Inner tolerance circle
+    cv::circle(ridge_bgr, origin_px,
+               static_cast<int>(LOOK_AHEAD_DISTANCE - LOOK_AHEAD_TOL),
+               cv::Scalar(255, 165, 0),   // orange
+               1, cv::LINE_AA);
+
+    // Nominal look-ahead circle
+    cv::circle(ridge_bgr, origin_px,
+               static_cast<int>(LOOK_AHEAD_DISTANCE),
+               cv::Scalar(0, 255, 255),   // yellow
+               2, cv::LINE_AA);
+
+    // Outer tolerance circle
+    cv::circle(ridge_bgr, origin_px,
+               static_cast<int>(LOOK_AHEAD_DISTANCE + LOOK_AHEAD_TOL),
+               cv::Scalar(255, 165, 0),   // orange
+               1, cv::LINE_AA);
+
+    // --- Target point ---
+    std::cout << "target point X, y: " << target_point.x << ", " << target_point.y << std::endl;
+    const cv::Point tp_px = target_to_ridge_px(target_point.y, target_point.x);
+    cv::drawMarker(ridge_bgr, tp_px,
+                   cv::Scalar(255, 0, 0),          // red
+                   cv::MARKER_CROSS, 30, 4, cv::LINE_AA);
+    cv::circle(ridge_bgr, tp_px, 5,
+               cv::Scalar(0, 0, 255), -1, cv::LINE_AA);
+
+    // --- Rest of the grid assembly (unchanged) ---
+    cv::Mat plot_bgr = render_xz_plot(pts3d, w, h);
+    cv::Mat top, bottom, grid;
+    cv::hconcat(std::vector<cv::Mat>{frame, fit(mask_bgr)}, top);
+    cv::hconcat(std::vector<cv::Mat>{fit(ridge_bgr), fit(plot_bgr)}, bottom);
+    cv::vconcat(std::vector<cv::Mat>{top, bottom}, grid);
+
+    const std::vector<std::string> labels = {"Frame", "Mask", "Ridge", "3D Points (XZ)"};
+    const std::vector<cv::Point> positions = {
+        {10, 30},
+        {w + 10, 30},
+        {10, h + 30},
+        {w + 10, h + 30}
+    };
+    for (size_t i = 0; i < labels.size(); ++i) {
+        cv::putText(grid, labels[i], positions[i], cv::FONT_HERSHEY_SIMPLEX,
+                    0.8, cv::Scalar(0, 255, 0), 2, cv::LINE_AA);
+    }
+
+    cv::resize(grid, grid, {int(1920 / 1.5), int(1080 / 1.5)}, 0, 0, cv::INTER_NEAREST);
+
+    cv::imshow("Perception Debug", grid);
+    int key = cv::waitKey(1);
+    if (key == 'q' || key == 27) {
+        exit(0);
+    };   // q or ESC
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Public pipeline – detect_line
 // ─────────────────────────────────────────────────────────────────────────────
 Perception::DetectionResult 
-Perception::detect_line(const cv::Mat& bgr_image, int height_filter, bool debug)
+Perception::detect_line(const cv::Mat& bgr_image, int height_filter)
 {
     double t0 = now_sec();
 
@@ -294,7 +413,7 @@ Perception::detect_line(const cv::Mat& bgr_image, int height_filter, bool debug)
     auto pts2d    = extract_points(ridge);             double t4 = now_sec();
     auto pts3d    = points2d_to_3d(pts2d);             double t5 = now_sec();
 
-    if (!debug)
+    if (_debug)
     {
         std::cout << "=======================\n"
                   << "Detection took   " << (t5 - t0) << " s\n"
@@ -306,22 +425,14 @@ Perception::detect_line(const cv::Mat& bgr_image, int height_filter, bool debug)
                   << "=======================\n";
     }
 
-    if (_show_debug_plots) {
-        cv::Mat grid = make_debug_grid(bgr_image, mask, ridge, pts3d);
-        cv::imshow("Perception Debug", grid);
+    _latest_detection = DetectionResult(mask, ridge, pts2d, pts3d);
 
-        int key = cv::waitKey(1);
-        if (key == 'q' || key == 27) {
-            _show_debug_plots = false;
-        };   // q or ESC
-    }
-
-    return { mask, ridge, pts2d, pts3d };
+    return _latest_detection;
 }
 
-void Perception::set_debug_plots_enabled(bool enabled)
+void Perception::set_debug(bool enabled)
 {
-    _show_debug_plots = enabled;
+    _debug = enabled;
 }
 
 
@@ -347,7 +458,7 @@ std::vector<Position> Perception::get_latest_line_follow_points()
     }
 
     std::cout << "get_latest_line_follow_points: calling detect line" << std::endl;
-    auto result = detect_line(frame, HEIGHT_FILTER, /*debug=*/false);
+    auto result = detect_line(frame, HEIGHT_FILTER);
 
     std::vector<Position> positions;
     positions.reserve(result.points_3d.size());
@@ -370,7 +481,7 @@ std::vector<Position> Perception::get_latest_line_follow_points_2d()
     }
 
     std::cout << "get_latest_line_follow_points: calling detect line" << std::endl;
-    auto result = detect_line(frame, HEIGHT_FILTER, /*debug=*/false);
+    auto result = detect_line(frame, HEIGHT_FILTER);
 
     std::vector<Position> positions;
     positions.reserve(result.points_2d.size());
@@ -399,7 +510,7 @@ std::optional<Position> Perception::get_latest_bullsey_point()
 
     double t5 = now_sec();
 
-    if (_show_debug_plots)
+    if (_debug)
     {
         std::cout << "3D blue points: " << blue_pts2d.size() << std::endl;
 
@@ -426,45 +537,6 @@ std::optional<Position> Perception::get_latest_bullsey_point()
 
 std::optional<Position> Perception::get_latest_end_goal_point()
 {
-    // double t0 = now_sec();
-    // cv::Mat blue_mask = get_blue_mask(_latest_bgr_frame);
-
-    // double t1 = now_sec();
-    // blue_mask = clean_mask(blue_mask);
-
-    // double t2 = now_sec();
-    // cv::Mat blue_ridge = extract_ridge(blue_mask, 0, 10);
-
-    // double t3 = now_sec();
-    // auto blue_pts2d = extract_points(blue_ridge);
-
-    // double t4 = now_sec();
-    // std::optional<cv::Point2f> blue_center = get_center_point(blue_pts2d);
-
-    // double t5 = now_sec();
-
-    // if (_show_debug_plots)
-    // {
-    //     std::cout << "3D blue points: " << blue_pts2d.size() << std::endl;
-
-    //     std::cout << "=======================\n"
-    //               << "End goal detection took   " << (t5 - t0) << " s\n"
-    //               << "Mask             " << (t1 - t0) << " s\n"
-    //               << "Clean            " << (t2 - t1) << " s\n"
-    //               << "Ridge            " << (t3 - t2) << " s\n"
-    //               << "Extract points   " << (t4 - t3) << " s\n"
-    //               << "Center detection " << (t5 - t4) << " s\n"
-    //             << "=======================\n";
-    // }
-
-    // if (blue_center.has_value()) {
-    //     Position center_camera_frame = Position{ _latest_bgr_frame.rows - blue_center.value().y, blue_center.value().x - _latest_bgr_frame.cols / 2, 0};
-    //     if (center_camera_frame.x < 100) {
-    //         return Position{0, 0, 0};
-    //     }
-    //     return center_camera_frame;
-    // }
-
     return std::nullopt;
 }
 
@@ -483,11 +555,4 @@ std::optional<cv::Point2f> Perception::get_center_point(std::vector<cv::Point2f>
     center_2d /= static_cast<float>(pts2d.size());
     
     return center_2d;
-
-    // OR 3D centroid from blue_pts3d
-    // Eigen::Vector3f blue_center_3d = Eigen::Vector3f::Zero();
-    // for (auto& pt : blue_pts3d) {
-    //     blue_center_3d += pt;
-    // }
-    // blue_center_3d /= blue_pts3d.size();
 }
