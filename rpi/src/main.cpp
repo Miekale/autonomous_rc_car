@@ -27,7 +27,8 @@ int main() {
     while (true) {
         auto start = std::chrono::steady_clock::now();
 
-        fsm.step();
+        serial.writeData(CMD_PURE_PURSUIT, {MAX_LINEAR_VELOCITY / 4, 0}, timestamp);
+
 
         auto elapsed = std::chrono::steady_clock::now() - start;
         auto sleep_for = PERIOD - elapsed;

@@ -69,7 +69,9 @@ FloatPair Controls::step(float a_x, float w_l_enc, float w_r_enc, float pps_vl, 
     // KF 
     auto [pred_state, pred_P] = predict_step(A, estimated_state, P_covariance, Q_enc);
     auto [est_state, est_P]   = correct_step(sensor, H_enc, R_enc, pred_state, pred_P);
-
+    Serial.print(F("est v: ")); Serial.print(est_state[0]);
+    Serial.print(F(" est a: ")); Serial.print(est_state[1]);
+    Serial.print(F(" est w: ")); Serial.println(est_state[2]);
     estimated_state = est_state;
     P_covariance    = est_P;
 
@@ -113,7 +115,7 @@ StatePair Controls::predict_step(Mat3 A, Vec3 prev_state, Mat3 prev_P, Mat3 Q) {
 // Returns [corrected state, corrected covariance]
 StatePair Controls::correct_step(Vec3 z_sensor, Mat3 H, Mat3 R, Vec3 pred_state, Mat3 pred_P) {
     Serial.print(F("H * pred_state: "));
-    serial_print_vec3(H * pred_state);
+    //_vec3(H * pred_state);
     Serial.println();
 
     Vec3 innovation = z_sensor - H * pred_state;
