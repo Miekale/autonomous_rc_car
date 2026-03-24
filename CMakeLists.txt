@@ -16,7 +16,6 @@ find_package(OpenCV REQUIRED)
 
 # 1. Include directories (No more ../../ mess!)
 include_directories(rpi/headers)
-include_directories(config)
 include_directories(utils)
 include_directories(controls_experiments/headers)
 

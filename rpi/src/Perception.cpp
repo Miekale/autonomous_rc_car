@@ -299,13 +299,13 @@ void Perception::make_debug_grid()
 // Maps pixel coords to world coords (origin at bottom-center of image)
 // pixel (960, FRAME_HEIGHT) -> world (0, 0)
 cv::Point2d Perception::image_to_robot(int x, int y) {
-    return {FRAME_HEIGHT - y, x - FRAME_WIDTH/2};  // x=forward, y=lateral
+    return {static_cast<double>(FRAME_HEIGHT - y), static_cast<double>(x - FRAME_WIDTH / 2)};  // x=forward, y=lateral
 }
 
 // Maps world coords back to pixel coords
 // world (0, 0) -> pixel (960, FRAME_HEIGHT)
 cv::Point2d Perception::robot_to_image(int x, int y) {
-    return {static_cast<int>(y + FRAME_WIDTH/2), static_cast<int>(FRAME_HEIGHT - x)};
+    return {static_cast<double>(y + FRAME_WIDTH / 2), static_cast<double>(FRAME_HEIGHT - x)};
 }
 
 
