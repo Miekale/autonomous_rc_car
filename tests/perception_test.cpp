@@ -124,7 +124,7 @@ int main(int argc, char** argv)
             break;
         }
 
-        auto result = perception.detect_line(frame, height_filter, debug);
+        auto result = perception.detect_line(frame, height_filter);
         auto bullseye = perception.get_latest_bullsey_point(); 
         // auto end_goal_point = perception.get_latest_end_goal_point();
         if (bullseye.has_value()) {
@@ -177,7 +177,7 @@ int main(int argc, char** argv)
 //     }
 
 //     Perception perception("0", false);
-//     auto result  = perception.detect_line(frame, height_filter, true);
+//     auto result  = perception.detect_line(frame, height_filter);
 //     auto bullsey = perception.get_latest_bullsey_point();
 
 //     std::cout << "3D points: " << result.points_3d.size() << "\n";

@@ -4,7 +4,7 @@
 #include "RescueController.hpp"
 #include <cstdlib>
 
-AutonomyFSM::AutonomyFSM(PurePursuit* pure_pursuit, Perception* perception, RescueController* rescue_controller, Serial* serial) {
+AutonomyFSM::AutonomyFSM(PurePursuit* pure_pursuit, Perception* perception, RescueController* rescue_controller, Serial* serial, bool debug) {
     _pure_pursuit = pure_pursuit;
     _perception = perception;
     _rescue_controller = rescue_controller;
@@ -15,7 +15,8 @@ AutonomyFSM::AutonomyFSM(PurePursuit* pure_pursuit, Perception* perception, Resc
     _goal = Position({1000, 1000, 0});
     _rescued_lego_person = false;
     _dropped_lego_person = false;
-    
+
+    _debug = debug;
 }
 
 /**
@@ -108,6 +109,9 @@ void AutonomyFSM::do_lf_pre_rescue() {
     std::pair<float, float> command = _pure_pursuit->getControl(Position({0,0,0}), target_point, lf_points);
     std::cout << "do_lf_pre_rescue: Got command " << command.first << ", " << command.second << std::endl;
 
+    if (_debug) {
+        _perception->make_debug_grid_with_pursuit(target_point);
+    }
     _rescue_controller->step_pursuit(*_serial, command, timestamp);
     _serial->readAndPrint();
     std::cout <<"do_lf_pre_rescue: stepped pursuit" << std::endl;
@@ -136,14 +140,21 @@ void AutonomyFSM::do_lf_post_rescue() {
     double timestamp = std::chrono::duration<double>(
         std::chrono::system_clock::now().time_since_epoch()
     ).count(); // seconds with fractional part
+
+    _perception->get_latest_bgr_frame();
+    _perception->get_latest_line_follow_points();
     std::vector<Position> lf_points = _perception->get_latest_line_follow_points();
 
     // Run PPS controller
     Position target_point = _pure_pursuit->findLookaheadPoint(Position({0,0,0}), lf_points);
     std::pair<float, float> command = _pure_pursuit->getControl(Position({0,0,0}), target_point, lf_points);
 
+    if (_debug) {
+        _perception->make_debug_grid_with_pursuit(target_point);
+    }
+
     // TODO: send command to Arduino via interfacing library
-    _rescue_controller->step_pursuit(*_serial, command, timestamp);
+    //_rescue_controller->step_pursuit(*_serial, command, timestamp);
 
     // Query perception for goal/dropoff
     std::optional<Position> end_goal = _perception->get_latest_end_goal_point();
