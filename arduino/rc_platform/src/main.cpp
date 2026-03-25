@@ -91,14 +91,16 @@ void loop() {
     count += 1;
 
     last_enc_time = now;
-    if ((now / 3000) > second_segment) {
+    if ((now / 5000) > second_segment) {
         if (pwm_speed > 255) {
             return;
         }
         second_segment += 1;
         pwm_speed += 10;
         Serial.print("\n\n\n\n\n\n\n\n\n\n\n\n\n\n");
+        delay(4);
     }
+
 
     //robot->execute_v_w_command(0.5, 0);
     // leftEncoder.update(dt);
