@@ -16,9 +16,7 @@ find_package(OpenCV REQUIRED)
 
 # 1. Include directories (No more ../../ mess!)
 include_directories(rpi/headers)
-include_directories(config)
 include_directories(utils)
-include_directories(interfacing/headers)
 include_directories(controls_experiments/headers)
 
 # 2. Define the source files for the control logic
@@ -28,7 +26,7 @@ set(CONTROL_SOURCES
     rpi/src/Perception.cpp
     rpi/src/AutonomyFSM.cpp
     rpi/src/RescueController.cpp
-    interfacing/serial/Serial.cpp
+    rpi/src/Serial.cpp
 )
 
 # 3. Create the test executable

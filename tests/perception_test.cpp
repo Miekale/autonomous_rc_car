@@ -119,18 +119,25 @@ int main(int argc, char** argv)
     while (true)
     {
         auto frame = perception.get_latest_bgr_frame();
+        if (frame.empty()) {
+            std::cerr << "Failed to capture frame\n";
+            break;
+        }
 
-        auto result = perception.detect_line(frame, height_filter, debug);
-        auto circles = perception.detect_bullseye();
-        std::cout << "Circles: " << circles.size() << std::endl;
+        auto result = perception.detect_line(frame, height_filter);
+        auto bullseye = perception.get_latest_bullsey_point(); 
+        // auto end_goal_point = perception.get_latest_end_goal_point();
+        if (bullseye.has_value()) {
+            std::cout << "Bullseye: " << bullseye.value().x << ", " << bullseye.value().y << ", " << bullseye.value().theta << std::endl;
+        }
 
         // Print point count each frame
-        std::cout << "\r3D points: " << result.points_3d.size()
-                  << "   " << std::flush;
+        // std::cout << "\r3D points: " << result.points_3d.size()
+        //           << "   " << std::flush;
 
-        cv::Mat grid = make_debug_grid(frame, result.mask, result.ridge, result.points_3d, circles);
+        //cv::Mat grid = make_debug_grid(frame, result.mask, result.ridge, result.points_3d, circles);
 
-        cv::imshow("Perception Debug", grid);
+        //cv::imshow("Perception Debug", grid);
 
         int key = cv::waitKey(1);
         if (key == 'q' || key == 27) break;   // q or ESC
@@ -141,3 +148,44 @@ int main(int argc, char** argv)
     std::cout << "\nDone.\n";
     return 0;
 }
+
+// int main(int argc, char** argv)
+// {
+//     std::string path = (argc > 1) ? argv[1] : "./utils/test_image.jpg";
+//     int height_filter = (argc > 2) ? std::stoi(argv[2]) : 0;
+
+//     auto ends_with = [](const std::string& s, const std::string& suffix) {
+//         return s.size() >= suffix.size() &&
+//                s.compare(s.size() - suffix.size(), suffix.size(), suffix) == 0;
+//     };
+
+//     cv::Mat frame;
+//     if (ends_with(path, ".mp4") || ends_with(path, ".avi") || ends_with(path, ".mov")) {
+//         cv::VideoCapture cap(path);
+//         if (!cap.isOpened()) {
+//             std::cerr << "Failed to open video: " << path << "\n";
+//             return 1;
+//         }
+//         cap >> frame;
+//     } else {
+//         frame = cv::imread(path);
+//     }
+
+//     if (frame.empty()) {
+//         std::cerr << "Failed to load frame from: " << path << "\n";
+//         return 1;
+//     }
+
+//     Perception perception("0", false);
+//     auto result  = perception.detect_line(frame, height_filter);
+//     auto bullsey = perception.get_latest_bullsey_point();
+
+//     std::cout << "3D points: " << result.points_3d.size() << "\n";
+
+//     cv::Mat grid = make_debug_grid(frame, result.mask, result.ridge, result.points_3d);
+//     cv::imshow("Perception Debug", grid);
+//     cv::waitKey(0);
+//     cv::destroyAllWindows();
+//     std::cout << "Done.\n";
+//     return 0;
+// }

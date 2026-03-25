@@ -29,6 +29,8 @@ private:
     float lookAheadDist;
     float maxLinearVel;
 
+    float angleTol = 3.14159f / 4.0f;
+
     Position rotatePosition(float dx, float dy, float angle);
 
 public:

@@ -115,12 +115,24 @@ void RobotController::execute_v_w_command() {
 
     Serial.print("Encoder readings: ");Serial.print(w_l); Serial.print(" "); Serial.println(w_r);
 
-    linalg::FloatPair command = _controls.step(a_x, w_l, w_r, v, w);
+    linalg::FloatPair command = _controls.step(a_x, w_l, w_r, v_target, w_target);
+    float left_wheel_pwm = command.first;
+    float right_wheel_pwm = command.second;
 
     Serial.print("Executing desired PWM speeds for l and r: "); Serial.print(command.first, 4); Serial.print(" "); Serial.println(command.second, 4);
 
-    set_m_l_speed(command.first);
-    set_m_r_speed(command.second); 
+    left_wheel_pwm = min(left_wheel_pwm, 255);
+    left_wheel_pwm = max(left_wheel_pwm, 0);
+    right_wheel_pwm = min(left_wheel_pwm, 255);
+    right_wheel_pwm = max(left_wheel_pwm, 0);
+
+    digitalWrite(_m_L_high_pin, HIGH);
+    digitalWrite(_m_L_low_pin, LOW);
+    analogWrite(_m_L_en_pin, left_wheel_pwm);
+
+    digitalWrite(_m_R_high_pin, HIGH);
+    digitalWrite(_m_R_low_pin, LOW);
+    analogWrite(_m_R_en_pin, right_wheel_pwm);
 
     _second_count++;
 

@@ -5,11 +5,14 @@
 #include "RescueController.hpp"
 #include "Serial.hpp"
 #include "Constants.hpp"
-#include <chrono>
+
 #include <thread>
 #include <iostream>
+#include <fstream>
 
-int main() {
+bool debug = true;
+
+int main(int argc, char* argv[]) {
     Serial serial("/dev/ttyACM0", SERIAL_BAUD_RATE);
     PurePursuit pure_pursuit(
         LOOK_AHEAD_DISTANCE,
@@ -19,22 +22,31 @@ int main() {
         MAX_LINEAR_VELOCITY
     );
     RescueController rescue_controller;
-    Perception perception("0", false, false);
-    AutonomyFSM fsm(&pure_pursuit, &perception, &rescue_controller, &serial);
+
+    Perception perception = argc > 1
+        ? Perception(argv[1], true, true)
+        : Perception("0", false, debug);
+
+    std::ifstream f(argv[1]);
+    if (!f.is_open()) {
+        std::cerr << "Could not open file: " << argv[1] << std::endl;
+        return 1;
+    }
+
+    AutonomyFSM fsm(&pure_pursuit, &perception, &rescue_controller, &serial, debug);
 
     std::cout << "DONE INI" << std::endl;
     std::cout << "Stepping FSM..." << std::endl;
     while (true) {
         // auto start = std::chrono::steady_clock::now();
 
-        //serial.writeData(CMD_PURE_PURSUIT, {MAX_LINEAR_VELOCITY / 4, 0}, timestamp);
+        fsm.step();
 
-        serial.readAndPrint();
         // auto elapsed = std::chrono::steady_clock::now() - start;
         // auto sleep_for = PERIOD - elapsed;
 
         // if (sleep_for > std::chrono::duration<double>(0)) {
-        //     std::this_thread::sleep_for(sleep_for);
-        // }
+          //  std::this_thread::sleep_for(sleep_for);
+        //}
     }
 }

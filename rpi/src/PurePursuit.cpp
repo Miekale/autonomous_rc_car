@@ -3,32 +3,41 @@
 PurePursuit::PurePursuit(float lookAheadDist, float lookAheadTol, float K_curve, 
         float K_velocity, float maxLinearVel) : 
     lookAheadDist(lookAheadDist), lookAheadTol(lookAheadTol), K_curve(K_curve), K_velocity(K_velocity), 
-     maxLinearVel(maxLinearVel) {}
+    maxLinearVel(maxLinearVel) {}
 
 Position PurePursuit::findLookaheadPoint(Position currPos, const std::vector<Position>& path) {
     int bestIndex = 0;
-    float minAngleError = std::numeric_limits<float>::max();
+    float minCost = std::numeric_limits<float>::max();
     bool foundInRing = false;
+
+    float lastAngle = 0.0f;
+    if (hasLastPosition) {
+        lastAngle = std::atan2(lastPosition.x, lastPosition.y);
+    }
 
     // Loop through all points
     for (int i = 0; i < path.size(); ++i) {
         float dx = path[i].x - currPos.x;
         float dy = path[i].y - currPos.y;
         float dst = std::sqrt(dx * dx + dy * dy);
+        float distError = std::abs(dst - lookAheadDist);
 
         // Check if the position is within a tolerance of look ahead
-        if (std::abs(dst - lookAheadDist) <= lookAheadTol) {
-            
+        if (distError <= lookAheadTol) {
             // find relative angle (in global coords) and normalize
             float angleToPoint = std::atan2(dy, dx);
             float alpha = angleToPoint - currPos.theta;
+
+            // normalize angle to [-pi, pi]
             alpha = std::atan2(std::sin(alpha), std::cos(alpha));
 
             // keep running track of position closest to heading 
             float absAlpha = std::abs(alpha);
-            if (absAlpha < minAngleError) {
-                minAngleError = absAlpha;
+
+            float cost = distError + std::abs(absAlpha - lastAngle) * 2;
+            if (cost < minCost) {
                 bestIndex = i;
+                minCost = cost;
                 foundInRing = true;
             }
         }
@@ -50,7 +59,8 @@ std::pair<float, float> PurePursuit::getControl(Position currPos, Position targe
     // transform target point to locale coords (robot faces down the x)
     float dx = target.x - currPos.x;
     float dy = target.y - currPos.y;
-    float turn_error = std::atan2(dx, dy);
+
+    float turn_error = std::atan2(dy, dx);
     float distance = std::sqrt(std::pow(dx, 2) + std::pow(dy, 2));
 
     if (distance < 10) {
@@ -65,7 +75,7 @@ std::pair<float, float> PurePursuit::getControl(Position currPos, Position targe
 
     float velocity = maxLinearVel / (1 + K_velocity * abs(scaled_curvature)); // tune velocity based on curvature
     float turn_rel_speed = WHEEL_TO_WHEEL_DISTANCE * std::sin(turn_error) * velocity / LOOK_AHEAD_DISTANCE;
-    float angularVel = 2 * turn_rel_speed / WHEEL_TO_WHEEL_DISTANCE;
+    float angularVel = 2 * turn_rel_speed / WHEEL_TO_WHEEL_DISTANCE * K_VELOCITY;
 
     return {velocity, angularVel};
 }

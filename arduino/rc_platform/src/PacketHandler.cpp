@@ -32,18 +32,16 @@ void PacketHandler::update() {
         memcpy(&seconds,      &infobuf[len - 8], 4);
         memcpy(&microseconds, &infobuf[len - 4], 4);
 
-        dispatch(infobuf, len);
-        float packetEpoch = seconds + (microseconds / 1e6f);
-        float timeSinceSend = packetEpoch - _handshakeEpoch; // time elapsed on RPi side since handshake
-
-        // Arduino time elapsed since handshake
+        float timeSinceSend = seconds + (microseconds / 1e6f); // already a delta from handshake
         float arduinoElapsed = (millis() - _handshakeMillis) / 1000.0f;
-
         float latency = arduinoElapsed - timeSinceSend;
 
         Serial.print("Latency since send: ");
         Serial.print(latency * 1000.0f, 3);
         Serial.println(" ms");
+
+        dispatch(infobuf, len);
+
         _serial.write(0x06);
     } else {
         _serial.write(0x15);
@@ -125,15 +123,8 @@ bool PacketHandler::waitForStartupPing() {
 
     // cmd 0x08 + 2 floats (seconds + microseconds) = 9 bytes
     if (len == 9 && infobuf[0] == 0x08) {
-        float seconds, microseconds;
-        memcpy(&seconds,      &infobuf[1], 4);
-        memcpy(&microseconds, &infobuf[5], 4);
-
-        // Reconstruct and save epoch
-        _handshakeEpoch = seconds + (microseconds / 1e6f);
-        _handshakeMillis = millis();
-
-        _serial.write(0x06); // ACK
+        _handshakeMillis = millis(); // just record Arduino time, epoch not needed anymore
+        _serial.write(0x06);
         return true;
     }
 
