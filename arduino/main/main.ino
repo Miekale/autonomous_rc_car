@@ -61,6 +61,7 @@ float get_target_speed(uint32_t t_ms) {
 uint32_t time = 0;
 int second_segment = 0;
 int pwm_speed = 10;
+int count = 0;
 void loop() {
     digitalWrite(MOTOR_L_HIGH_PIN, HIGH);
     digitalWrite(MOTOR_L_LOW_PIN, LOW);
@@ -73,17 +74,51 @@ void loop() {
     leftEncoder.update(dt);
     rightEncoder.update(dt);
 
-    Serial.print(F("w_l: ")); Serial.println(leftEncoder.getVelocity());
-    Serial.print(F(" w_r: ")); Serial.println(rightEncoder.getVelocity());
-
     uint32_t now = millis();
     dt = (now - last_enc_time) / 1000.0f;
     // Serial.print("Current speed: ");
     // Serial.println(pwm_speed);
-    Serial.print(F(" dt: ")); 
-    Serial.print(dt, 4);
+    // Serial.print(F(" dt: ")); 
+    // Serial.print(dt, 4);
     // Serial.print(" actual ms time: ");
     // Serial.println(now - last_enc_time);
+    if (count == 40) {
+        Serial.print(F("pwm is: ")); Serial.println(pwm_speed);
+        Serial.print(F("w_l: ")); Serial.println(leftEncoder.getVelocity());
+        Serial.print(F(" w_r: ")); Serial.println(rightEncoder.getVelocity());
+        count = 0;
+    }
+    count += 1;
 
-    robot->execute_v_w_command(1000, 0);  // 1m/s = 1000mm/s
+    last_enc_time = now;
+    if ((now / 3000) > second_segment) {
+        if (pwm_speed > 255) {
+            return;
+        }
+        second_segment += 1;
+        pwm_speed += 10;
+        Serial.print("\n\n\n\n\n\n\n\n\n\n\n\n\n\n");
+    }
+
+    //robot->execute_v_w_command(0.5, 0);
+    // leftEncoder.update(dt);
+    // rightEncoder.update(dt);
+
+    // float w_l = leftEncoder.getVelocity();
+    // float w_r = rightEncoder.getVelocity();
+    // float a_x = imu.getX();
+
+    // float target = get_target_speed(now);
+
+    // set_m_l_speed(target);
+    // set_m_r_speed(target);
+
+    // controls.step(a_x, w_l, w_r, target, 0.0f);
+
+    // Serial.print(F("t: "));       Serial.print(now);
+    // Serial.print(F(" target: ")); Serial.print(target);
+    // Serial.print(F(" w_l: "));    Serial.print(w_l);
+    // Serial.print(F(" w_r: "));    Serial.println(w_r);
+
+    // delay(20);
 }

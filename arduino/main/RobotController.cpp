@@ -53,6 +53,16 @@ void RobotController::set_m_l_speed(float percent) {
 
     Serial.print("LEFT: ");
     Serial.println(abs(percent) * 50 + 30);
+
+    /*
+    
+    10: 0
+    20: 0
+    30: 30
+    40: 
+
+    
+    */
 }
 
 void RobotController::set_m_r_speed(float percent) {
@@ -84,9 +94,8 @@ void RobotController::set_m_r_speed(float percent) {
 void RobotController::execute_v_w_command(float v, float w) {
     // If v > 0 then start running both
     float a_x = _imu.getX();
-    // TODO: re-tune the IMU to get 0 accel when NOT moving
-    a_x = 0;
-    Serial.print("IMU a_x: "); Serial.println(a_x);
+    
+    Serial.print("IMU a_x: "); Serial.println(a_x, 5);
 
     uint32_t now = millis();
     float dt = (now - _last_enc_time) / 1000.0f;
@@ -97,7 +106,7 @@ void RobotController::execute_v_w_command(float v, float w) {
     _left_encoder.update(dt);
     _right_encoder.update(dt);
 
-    float w_l = _left_encoder.getVelocity();   // or getTicks() / dt
+    float w_l = _left_encoder.getVelocity();   // rad/s
     float w_r = _right_encoder.getVelocity();
 
     Serial.print("Encoder readings: ");Serial.print(w_l); Serial.print(" "); Serial.println(w_r);
@@ -110,6 +119,7 @@ void RobotController::execute_v_w_command(float v, float w) {
     float command_wl = pair.first / max_angular_velocity;
     float command_wr = pair.second / max_angular_velocity;
     Serial.print("Executing left and right desired angular speeds: "); Serial.print(pair.first, 4); Serial.print(" "); Serial.println(pair.second, 4);
+    //Serial.print("Executing left and right actual percent: "); Serial.print(command_wl, 4); Serial.print(" "); Serial.println(command_wr, 4);
 
     set_m_l_speed(command_wl);
     set_m_r_speed(command_wr); 
