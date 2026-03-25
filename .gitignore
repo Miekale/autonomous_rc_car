@@ -68,6 +68,9 @@ instance/
 # Scrapy stuff:
 .scrapy
 
+# mac ahhhh
+.DS_Store
+
 # Sphinx documentation
 docs/_build/
 videos/
