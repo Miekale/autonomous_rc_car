@@ -38,10 +38,11 @@ uint32_t start_time = 0;
 float dt = 0.0f;
 
 void setup() {
-    Serial.begin(460800);
+    Serial.begin(115200);
 
     robot = new RobotController(leftEncoder, rightEncoder, imu, claw_servo, SERVO_CLAW_PIN, MOTOR_L_HIGH_PIN, MOTOR_L_LOW_PIN, MOTOR_L_EN_PIN, MOTOR_R_HIGH_PIN, MOTOR_R_LOW_PIN, MOTOR_R_EN_PIN); 
-
+    handler = new PacketHandler(Serial, *robot);
+    
     leftEncoder.init();
     rightEncoder.init(true);
 
@@ -49,78 +50,121 @@ void setup() {
     last_enc_time = millis();
     start_time = millis();
 
-    Serial.println(F("Starting KF tuning run..."));
+    Serial.println(F("Starting PID tuning run..."));
 }
 
-float get_target_speed(uint32_t t_ms) {
-    uint32_t elapsed = t_ms - start_time;
-    if (elapsed < 2000)       return 0.0f;
-    else if (elapsed < 5000)  return 0.01f;
-    else                      return 0.0f;
-}
-uint32_t time = 0;
-int second_segment = 0;
-int pwm_speed = 10;
-int count = 0;
 void loop() {
-    digitalWrite(MOTOR_L_HIGH_PIN, HIGH);
-    digitalWrite(MOTOR_L_LOW_PIN, LOW);
-    analogWrite(MOTOR_L_EN_PIN, pwm_speed);
-
-    digitalWrite(MOTOR_R_HIGH_PIN, HIGH);
-    digitalWrite(MOTOR_R_LOW_PIN, LOW);
-    analogWrite(MOTOR_R_EN_PIN, pwm_speed);
-
-    leftEncoder.update(dt);
-    rightEncoder.update(dt);
-
     uint32_t now = millis();
     dt = (now - last_enc_time) / 1000.0f;
-    // Serial.print("Current speed: ");
-    // Serial.println(pwm_speed);
-    // Serial.print(F(" dt: ")); 
-    // Serial.print(dt, 4);
-    // Serial.print(" actual ms time: ");
-    // Serial.println(now - last_enc_time);
-    if (count == 40) {
-        Serial.print(F("pwm is: ")); Serial.println(pwm_speed);
-        Serial.print(F("w_l: ")); Serial.println(leftEncoder.getVelocity());
-        Serial.print(F(" w_r: ")); Serial.println(rightEncoder.getVelocity());
-        count = 0;
-    }
-    count += 1;
-
     last_enc_time = now;
-    if ((now / 5000) > second_segment) {
-        if (pwm_speed > 255) {
-            return;
-        }
-        second_segment += 1;
-        pwm_speed += 10;
-        Serial.print("\n\n\n\n\n\n\n\n\n\n\n\n\n\n");
-        delay(4);
-    }
-
-
-    //robot->execute_v_w_command(0.5, 0);
-    // leftEncoder.update(dt);
-    // rightEncoder.update(dt);
-
-    // float w_l = leftEncoder.getVelocity();
-    // float w_r = rightEncoder.getVelocity();
-    // float a_x = imu.getX();
-
-    // float target = get_target_speed(now);
-
-    // set_m_l_speed(target);
-    // set_m_r_speed(target);
-
-    // controls.step(a_x, w_l, w_r, target, 0.0f);
-
-    // Serial.print(F("t: "));       Serial.print(now);
-    // Serial.print(F(" target: ")); Serial.print(target);
-    // Serial.print(F(" w_l: "));    Serial.print(w_l);
-    // Serial.print(F(" w_r: "));    Serial.println(w_r);
-
-    // delay(20);
+    handler->update();
+    robot->execute_v_w_command();
 }
+
+// uint32_t time = 0;
+// float target_left_wheel = 25;  //rad/s
+// float target_right_wheel = 25;
+
+// float kp_left = 2.5;
+// float ki_left = .5;
+// float accum_error_left = 0;
+
+// float kp_right = kp_left;
+// float ki_right =2.5;
+// float accum_error_right = 0;
+// void loop() {
+//     uint32_t now = millis();
+//     dt = (now - last_enc_time) / 1000.0f;
+//     last_enc_time = now;
+//     handler->update();
+
+//     leftEncoder.update(dt);
+//     rightEncoder.update(dt);
+
+//     Serial.print("dt: ");Serial.println(dt, 4);
+//     float left_vel = leftEncoder.getVelocity();
+//     Serial.print("left vel:");Serial.println(left_vel);
+//     float right_vel = rightEncoder.getVelocity();
+//     Serial.print("right vel: ");Serial.println(right_vel);
+
+//     Serial.println("left PID ------");
+//     float left_wheel_pwm = controls.pid_calculate(
+//         target_left_wheel, 
+//         left_vel,
+//         kp_left, 
+//         ki_left,
+//         accum_error_left,
+//         dt);
+
+//     Serial.println("right PID ------");
+//     float right_wheel_pwm = controls.pid_calculate(
+//         target_left_wheel, 
+//         right_vel,
+//         kp_right, 
+//         ki_right,
+//         accum_error_right,
+//         dt);
+
+//     // FF
+//     float left_ff = controls.ff(target_left_wheel, false);
+//     float right_ff = controls.ff(target_right_wheel, true);
+
+//     // Clamp
+//     Serial.print("left FF:");Serial.println(left_ff);
+//     Serial.print("left PI:");Serial.println(left_wheel_pwm);
+//     Serial.print("right FF:");Serial.println(right_ff);
+//     Serial.print("right PI:");Serial.println(right_wheel_pwm);
+
+//     left_wheel_pwm += left_ff;
+//     right_wheel_pwm += right_ff;
+    
+//     Serial.print("left_wheel_pwm pre clamp: ");
+//     Serial.println(left_wheel_pwm);
+//     Serial.println("right_wheel_pwm pre clamp: ");
+//     Serial.println(right_wheel_pwm);
+
+//     left_wheel_pwm = min(left_wheel_pwm, 255);
+//     left_wheel_pwm = max(left_wheel_pwm, 0);
+//     right_wheel_pwm = min(left_wheel_pwm, 255);
+//     right_wheel_pwm = max(left_wheel_pwm, 0);
+
+//     digitalWrite(MOTOR_L_HIGH_PIN, HIGH);
+//     digitalWrite(MOTOR_L_LOW_PIN, LOW);
+//     analogWrite(MOTOR_L_EN_PIN, left_wheel_pwm);
+
+//     digitalWrite(MOTOR_R_HIGH_PIN, HIGH);
+//     digitalWrite(MOTOR_R_LOW_PIN, LOW);
+//     analogWrite(MOTOR_R_EN_PIN, right_wheel_pwm);
+// }
+
+
+
+// float pid = 65;
+// float left_wheel_pwm = pid;
+// float right_wheel_pwm = pid;
+
+// void loop() {
+//     Serial.println("RUNNING AT: ");
+//     Serial.println(left_wheel_pwm);
+//     Serial.println(right_wheel_pwm);
+
+//     uint32_t now = millis();
+//     dt = (now - last_enc_time) / 1000.0f;
+//     last_enc_time = now;
+
+//     leftEncoder.update(dt);
+//     rightEncoder.update(dt);
+
+//     float left_vel = leftEncoder.getVelocity();
+//     Serial.print("left vel: ");Serial.println(left_vel);
+//     float right_vel = leftEncoder.getVelocity();
+//     Serial.print("right vel: ");Serial.println(right_vel);
+
+//     digitalWrite(MOTOR_L_HIGH_PIN, HIGH);
+//     digitalWrite(MOTOR_L_LOW_PIN, LOW);
+//     analogWrite(MOTOR_L_EN_PIN, left_wheel_pwm);
+
+//     digitalWrite(MOTOR_R_HIGH_PIN, HIGH);
+//     digitalWrite(MOTOR_R_LOW_PIN, LOW);
+//     analogWrite(MOTOR_R_EN_PIN, right_wheel_pwm);
+// }

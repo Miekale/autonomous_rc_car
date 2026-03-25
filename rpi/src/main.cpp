@@ -25,16 +25,16 @@ int main() {
     std::cout << "DONE INI" << std::endl;
     std::cout << "Stepping FSM..." << std::endl;
     while (true) {
-        auto start = std::chrono::steady_clock::now();
+        // auto start = std::chrono::steady_clock::now();
 
-        serial.writeData(CMD_PURE_PURSUIT, {MAX_LINEAR_VELOCITY / 4, 0}, timestamp);
+        //serial.writeData(CMD_PURE_PURSUIT, {MAX_LINEAR_VELOCITY / 4, 0}, timestamp);
 
+        serial.readAndPrint();
+        // auto elapsed = std::chrono::steady_clock::now() - start;
+        // auto sleep_for = PERIOD - elapsed;
 
-        auto elapsed = std::chrono::steady_clock::now() - start;
-        auto sleep_for = PERIOD - elapsed;
-
-        if (sleep_for > std::chrono::duration<double>(0)) {
-            std::this_thread::sleep_for(sleep_for);
-        }
+        // if (sleep_for > std::chrono::duration<double>(0)) {
+        //     std::this_thread::sleep_for(sleep_for);
+        // }
     }
 }

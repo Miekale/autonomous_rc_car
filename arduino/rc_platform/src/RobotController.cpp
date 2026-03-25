@@ -48,7 +48,7 @@ void RobotController::set_m_l_speed(float percent) {
         digitalWrite(_m_L_high_pin, LOW);
         digitalWrite(_m_L_low_pin, HIGH);
     }
-    analogWrite(_m_L_en_pin, 80);
+    analogWrite(_m_L_en_pin,  abs(percent * LEFT_COMPENSATION) * 50 + 30);
 
 
     Serial.print("LEFT: ");
@@ -85,16 +85,20 @@ void RobotController::set_m_r_speed(float percent) {
         digitalWrite(_m_R_high_pin, LOW);
         digitalWrite(_m_R_low_pin, HIGH);
     }
-    analogWrite(_m_R_en_pin, 80);
+    analogWrite(_m_R_en_pin, abs(percent) * 50 + 30);
 
     Serial.print("RIGHT: ");
-    Serial.println(abs(percent) * 50 + 30);
+    Serial.println(abs(percent) * 50 + 3);
 }
 
-void RobotController::execute_v_w_command(float v, float w) {
-    // If v > 0 then start running both
+
+void RobotController::update_v_w_command(float v, float w) {
+    v_target = v;
+    w_target = w;
+}
+
+void RobotController::execute_v_w_command() {
     float a_x = _imu.getX();
-    
     Serial.print("IMU a_x: "); Serial.println(a_x, 5);
 
     uint32_t now = millis();
@@ -111,18 +115,12 @@ void RobotController::execute_v_w_command(float v, float w) {
 
     Serial.print("Encoder readings: ");Serial.print(w_l); Serial.print(" "); Serial.println(w_r);
 
-    linalg::FloatPair pair = _controls.step(a_x, w_l, w_r, v, w);
+    linalg::FloatPair command = _controls.step(a_x, w_l, w_r, v, w);
 
-    // TODO: this controls implementation doesn't make sense, rewrite it
-    // do the PID loop much closer to motors, output velocity error from PID, output PWM directly?
-    // angular velocities
-    float command_wl = pair.first / max_angular_velocity;
-    float command_wr = pair.second / max_angular_velocity;
-    Serial.print("Executing left and right desired angular speeds: "); Serial.print(pair.first, 4); Serial.print(" "); Serial.println(pair.second, 4);
-    //Serial.print("Executing left and right actual percent: "); Serial.print(command_wl, 4); Serial.print(" "); Serial.println(command_wr, 4);
+    Serial.print("Executing desired PWM speeds for l and r: "); Serial.print(command.first, 4); Serial.print(" "); Serial.println(command.second, 4);
 
-    set_m_l_speed(command_wl);
-    set_m_r_speed(command_wr); 
+    set_m_l_speed(command.first);
+    set_m_r_speed(command.second); 
 
     _second_count++;
 

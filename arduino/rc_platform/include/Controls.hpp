@@ -56,13 +56,13 @@ public:
     
     Vec3 target_state;
 
-    float kpv;
-    float kiv;
-    float accum_error_v;
+    const float kp_left = 2.5;
+    const float ki_left = 0.5;
+    float accum_error_left = 0;
 
-    float kpw;
-    float kiw;
-    float accum_error_w;
+    const float kp_right = kp_left;
+    const float ki_right = 2.5;
+    float accum_error_right = 0; 
 
     float pid_calculate(float target, float current, float kp, float ki, float &accum_error, float dt);
 
@@ -70,6 +70,7 @@ public:
 
     StatePair predict_step(Mat3 A, Vec3 prev_state, Mat3 prev_P, Mat3 Q, uint32_t time_delta, float a_x);
     StatePair correct_step(Vec3 z_sensor, Mat3 H, Mat3 R, Vec3 pred_state, Mat3 pred_P);
+    float ff(float target_angular_speed, bool is_right);
 
     static FloatPair forward_kinematics(float w_r, float w_l);
     static FloatPair inverse_kinematics(float v, float w);

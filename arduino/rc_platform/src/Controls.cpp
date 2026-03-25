@@ -42,14 +42,6 @@ void serial_print_mat3(const linalg::Mat3& m) {
 }  // namespace
 
 Controls::Controls() {
-    // TODO: Tune these later with car
-    kpv = 0.0f;
-    kiv = 0.0f;
-    kpw = 0.0f;
-    kiw = 0.0f;
-
-    accum_error_v = 0.0f;
-    accum_error_w = 0.0f;
     last_time = millis();
     target_state = Vec3();
     estimated_state = Vec3();
@@ -83,27 +75,60 @@ FloatPair Controls::step(float a_x, float w_l_enc, float w_r_enc, float pps_vl, 
     target_state[0] = pps_vl;
     target_state[2] = pps_w;
 
-    // TODO: tune PID side
-    // float u_v = pid_calculate(target_state[0],
-    //                           estimated_state[0],
-    //                           kpv, kiv, accum_error_v,
-    //                           0.02f);
+    auto [w_l_target, w_r_target ] = inverse_kinematics(pps_vl, pps_w);
 
-    // float u_w = pid_calculate(target_state[2],
-    //                           estimated_state[2],
-    //                           kpw, kiw, accum_error_w,
-    //                           0.02f);
+    Serial.println("right PID ------");
+    float w_l_pwm = pid_calculate(
+        w_l_target, 
+        w_l_enc,
+        kp_left, 
+        ki_left,
+        accum_error_left,
+        time_delta);
 
-    return inverse_kinematics(pps_vl, pps_w);
+    Serial.println("right PID ------");
+    float w_r_pwm = pid_calculate(
+        w_r_target, 
+        w_r_enc,
+        kp_right, 
+        ki_right,
+        accum_error_right,
+        time_delta);
+
+    float left_ff = ff(w_l_target, false);
+    float right_ff = ff(w_r_target, true);
+
+    w_l_pwm += left_ff;
+    w_r_pwm += right_ff;
+    
+    return {w_l_pwm, w_r_pwm};
 }
 
 float Controls::pid_calculate(float target, float current, float kp, float ki, float &accum_error, float dt) {
     float error = target - current;
     accum_error += error;
 
+    Serial.print("Error: ");
+    Serial.println(error);
+
     float u = error*kp + accum_error*ki*dt;
 
     return u;
+}
+
+float Controls::ff(float target_angular_speed, bool is_right) {
+    // PWM 65: 55rad/s
+    // PWM 60: 48rad/s
+    // PWM 55: 40rad/s
+    // PWM 50: 35rad/s
+    // PWM 45: 28rad/s
+    // PWM 40: 23rad/s
+    // PWM 35: 16rad/s
+    // fit with excel: ff = 0.78x + 22.7 
+    if (is_right) {
+        return (target_angular_speed + 20) *0.78 + 22.7;
+    }
+    return target_angular_speed * 0.78 + 22.7;
 }
 
 // Returns [pred state, pred covariance]

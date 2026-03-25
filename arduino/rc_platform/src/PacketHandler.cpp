@@ -67,7 +67,7 @@ void PacketHandler::dispatch(uint8_t* data, uint8_t len) {
             memcpy(&v, &data[1], 4);
             memcpy(&w, &data[5], 4);
             
-            _robot.execute_v_w_command(v, w);
+            _robot.update_v_w_command(v, w);
             
             break;
         }
