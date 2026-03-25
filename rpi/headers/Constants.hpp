@@ -19,7 +19,7 @@ const float K_CURVE = 1;
 const float K_VELOCITY = 1;
 const float MAX_LINEAR_VELOCITY = 200; // mm/s
 
-const speed_t SERIAL_BAUD_RATE = B38400;
+const speed_t SERIAL_BAUD_RATE = B115200;
 
 const int LOOP_HZ = 30;
 const auto PERIOD = std::chrono::duration<double>(1.0 / LOOP_HZ);

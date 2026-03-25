@@ -16,8 +16,12 @@ private:
     int _m_L_low_pin;
     int _m_R_high_pin;
     int _m_R_low_pin;
+    int _m_L_en_pin;
+    int _m_R_en_pin;
+
+    const float LEFT_COMPENSATION = 0.9;
     uint32_t _last_enc_time = 0;
-    float r_wheel = 31;
+    float r_wheel = 31; // mm
     float max_linear_velocity = 1000; // mm/s
     float max_angular_velocity = max_linear_velocity / r_wheel; // rad/s
     int freq = 50;
@@ -29,9 +33,13 @@ private:
     IMUGY61& _imu;
     Controls _controls;
 
+    float v_target;
+    float w_target;
+
 public: 
     RobotController(EncoderAS5600& left_encoder, EncoderAS5600& right_encoder, 
-        IMUGY61& imu, Servo& servo, int servo_pin, int motor_L_high_pin, int motor_L_low_pin, int motor_R_high_pin, int motor_R_low_pin);
+        IMUGY61& imu, Servo& servo, int servo_pin, int motor_L_high_pin, int motor_L_low_pin, 
+        int motor_L_en_pin, int motor_R_high_pin, int motor_R_low_pin, int motor_R_en_pin);
 
     // Claw
     void openClaw();
@@ -39,7 +47,8 @@ public:
 
     // Motors
     void init_motors();
-    void execute_v_w_command(float v, float w);
+    void execute_v_w_command();
+    void update_v_w_command(float v, float w);
     void set_m_l_speed(float percent);
     void set_m_r_speed(float percent);
 };

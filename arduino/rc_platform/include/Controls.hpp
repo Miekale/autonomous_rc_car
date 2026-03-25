@@ -16,22 +16,28 @@ public:
     static const float LENGTH_WHEEL_TO_WHEEL = 160.0;
 
     // 0.02 comes from estimated 50hz
-    const Mat3 A = Mat3(
-        1.0f, 0.02f, 0.0f,
-        0.0f, 1.0f,  0.0f,
-        0.0f, 0.0f,  1.0f
+    Mat3 A = Mat3(
+        0.80f, 0.0, 0.0f,
+        0.0f,  0.90f, 0.0f,
+        0.0f,  0.0f,  0.80f
     );
 
     const Mat3 R_enc = Mat3(
-        0.1f, 0.0f, 0.0f,
-        0.0f, 0.1f, 0.0f,
-        0.0f, 0.0f, 0.1f
+        50.0f, 0.0f,    0.0f,
+        0.0f,    50.0f, 0.0f,
+        0.0f,    0.0f,    50.0f
     );
 
     const Mat3 Q_enc = Mat3(
-        1.0f, 0.0f, 0.0f,
-        0.0f, 1.0f, 0.0f,
-        0.0f, 0.0f, 1.0f
+        10.0f, 0.0f, 0.0f,
+        0.0f, 50.0f, 0.0f,
+        0.0f, 0.0f, 10.0f
+    );
+
+    Mat3 P_covariance = Mat3(
+        100.0f, 0.0f, 0.0f, 
+        0.0f, 100.0f, 0.0f,
+        0.0f, 0.0f, 100.0f
     );
 
     const Mat3 H_enc = Mat3(
@@ -47,26 +53,29 @@ public:
     uint32_t last_time;
     uint32_t time_delta;
     Vec3 sensor;
-    Mat3 P_covariance;
+    
     Vec3 target_state;
 
-    float kpv;
-    float kiv;
-    float accum_error_v;
+    const float kp_left = 2.5;
+    const float ki_left = 0.5;
+    float accum_error_left = 0;
 
-    float kpw;
-    float kiw;
-    float accum_error_w;
+    const float kp_right = kp_left;
+    const float ki_right = 2.5;
+    float accum_error_right = 0; 
 
     float pid_calculate(float target, float current, float kp, float ki, float &accum_error, float dt);
 
     Vec3 estimated_state;
 
-    StatePair predict_step(Mat3 A, Vec3 prev_state, Mat3 prev_P, Mat3 Q);
+    StatePair predict_step(Mat3 A, Vec3 prev_state, Mat3 prev_P, Mat3 Q, uint32_t time_delta, float a_x);
     StatePair correct_step(Vec3 z_sensor, Mat3 H, Mat3 R, Vec3 pred_state, Mat3 pred_P);
+    float ff(float target_angular_speed, bool is_right);
 
     static FloatPair forward_kinematics(float w_r, float w_l);
     static FloatPair inverse_kinematics(float v, float w);
+
+    void init(float w_l, float w_r);
 };
 
 #endif
