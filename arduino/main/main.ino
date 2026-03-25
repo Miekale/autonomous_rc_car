@@ -85,35 +85,5 @@ void loop() {
     // Serial.print(" actual ms time: ");
     // Serial.println(now - last_enc_time);
 
-    last_enc_time = now;
-    if ((now / 5000) > second_segment) {
-        if (pwm_speed > 255) {
-            return;
-        }
-        second_segment += 1;
-        pwm_speed += 10;
-        Serial.print("\n\n\n\n\n\n\n\n\n\n\n\n\n\n");
-    }
-
-    robot->execute_v_w_command(0.5, 0);
-    // leftEncoder.update(dt);
-    // rightEncoder.update(dt);
-
-    // float w_l = leftEncoder.getVelocity();
-    // float w_r = rightEncoder.getVelocity();
-    // float a_x = imu.getX();
-
-    // float target = get_target_speed(now);
-
-    // set_m_l_speed(target);
-    // set_m_r_speed(target);
-
-    // controls.step(a_x, w_l, w_r, target, 0.0f);
-
-    // Serial.print(F("t: "));       Serial.print(now);
-    // Serial.print(F(" target: ")); Serial.print(target);
-    // Serial.print(F(" w_l: "));    Serial.print(w_l);
-    // Serial.print(F(" w_r: "));    Serial.println(w_r);
-
-    // delay(20);
+    robot->execute_v_w_command(1000, 0);  // 1m/s = 1000mm/s
 }

@@ -20,7 +20,7 @@ private:
     int _m_R_en_pin;
 
     uint32_t _last_enc_time = 0;
-    float r_wheel = 31;
+    float r_wheel = 31; // mm
     float max_linear_velocity = 1000; // mm/s
     float max_angular_velocity = max_linear_velocity / r_wheel; // rad/s
     int freq = 50;

@@ -37,7 +37,7 @@ void serial_print_mat3(const linalg::Mat3& m) {
     Serial.print(m.idx(2, 1));
     Serial.print(F(", "));
     Serial.print(m.idx(2, 2));
-    Serial.print(']');
+    Serial.println(']');
 }
 }  // namespace
 
@@ -120,14 +120,14 @@ StatePair Controls::predict_step(Mat3 A, Vec3 prev_state, Mat3 prev_P, Mat3 Q, u
 
 // Returns [corrected state, corrected covariance]
 StatePair Controls::correct_step(Vec3 z_sensor, Mat3 H, Mat3 R, Vec3 pred_state, Mat3 pred_P) {
-    //Serial.print(F("H * pred_state: "));
-    //_vec3(H * pred_state);
-    //Serial.println();
+    // Serial.print(F("H * pred_state: "));
+    // _vec3(H * pred_state);
+    // Serial.println();
 
     Vec3 innovation = z_sensor - H * pred_state;
-    //Serial.print(F("Innovation: "));
-    //serial_print_vec3(innovation);
-    // Serial.println();
+    Serial.print(F("Innovation: "));
+    serial_print_vec3(innovation);
+    Serial.println();
 
     Mat3 S = H * pred_P * H.transpose() + R;
     //Serial.println(F("Innovation covar:"));

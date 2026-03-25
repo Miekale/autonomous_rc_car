@@ -48,11 +48,11 @@ void RobotController::set_m_l_speed(float percent) {
         digitalWrite(_m_L_high_pin, LOW);
         digitalWrite(_m_L_low_pin, HIGH);
     }
-    analogWrite(_m_L_en_pin, abs(percent) * 50 + 30);
+    analogWrite(_m_L_en_pin, 80);
 
 
     Serial.print("LEFT: ");
-    Serial.println(percent * 100);
+    Serial.println(abs(percent) * 50 + 30);
 }
 
 void RobotController::set_m_r_speed(float percent) {
@@ -75,15 +75,18 @@ void RobotController::set_m_r_speed(float percent) {
         digitalWrite(_m_R_high_pin, LOW);
         digitalWrite(_m_R_low_pin, HIGH);
     }
-    analogWrite(_m_R_en_pin, abs(percent) * 50 + 30);
+    analogWrite(_m_R_en_pin, 80);
 
     Serial.print("RIGHT: ");
-    Serial.println(percent * 100);
+    Serial.println(abs(percent) * 50 + 30);
 }
 
 void RobotController::execute_v_w_command(float v, float w) {
     // If v > 0 then start running both
     float a_x = _imu.getX();
+    // TODO: re-tune the IMU to get 0 accel when NOT moving
+    a_x = 0;
+    Serial.print("IMU a_x: "); Serial.println(a_x);
 
     uint32_t now = millis();
     float dt = (now - _last_enc_time) / 1000.0f;
@@ -91,23 +94,25 @@ void RobotController::execute_v_w_command(float v, float w) {
 
     Serial.print(F("dt: ")); Serial.println(dt);  // add here
 
-
     _left_encoder.update(dt);
     _right_encoder.update(dt);
 
     float w_l = _left_encoder.getVelocity();   // or getTicks() / dt
     float w_r = _right_encoder.getVelocity();
 
+    Serial.print("Encoder readings: ");Serial.print(w_l); Serial.print(" "); Serial.println(w_r);
+
     linalg::FloatPair pair = _controls.step(a_x, w_l, w_r, v, w);
 
     // TODO: this controls implementation doesn't make sense, rewrite it
     // do the PID loop much closer to motors, output velocity error from PID, output PWM directly?
     // angular velocities
-    w_l = pair.first / max_angular_velocity;
-    w_r = pair.second / max_angular_velocity;
+    float command_wl = pair.first / max_angular_velocity;
+    float command_wr = pair.second / max_angular_velocity;
+    Serial.print("Executing left and right desired angular speeds: "); Serial.print(pair.first, 4); Serial.print(" "); Serial.println(pair.second, 4);
 
-    set_m_l_speed(w_l);
-    set_m_r_speed(w_r); 
+    set_m_l_speed(command_wl);
+    set_m_r_speed(command_wr); 
 
     _second_count++;
 
