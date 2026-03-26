@@ -12,7 +12,7 @@ Position PurePursuit::findLookaheadPoint(Position currPos, const std::vector<Pos
 
     float lastAngle = 0.0f;
     if (hasLastPosition) {
-        lastAngle = std::atan2(lastPosition.x, lastPosition.y);
+        lastAngle = std::atan2(lastPosition.y, lastPosition.x);
     }
 
     // Loop through all points
@@ -31,10 +31,7 @@ Position PurePursuit::findLookaheadPoint(Position currPos, const std::vector<Pos
             // normalize angle to [-pi, pi]
             alpha = std::atan2(std::sin(alpha), std::cos(alpha));
 
-            // keep running track of position closest to heading 
-            float absAlpha = std::abs(alpha);
-
-            float cost = distError + std::abs(absAlpha - lastAngle) * 2;
+            float cost = distError + std::abs(alpha - lastAngle) * 4;
             if (cost < minCost) {
                 bestIndex = i;
                 minCost = cost;
