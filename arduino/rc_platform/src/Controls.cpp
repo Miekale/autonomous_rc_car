@@ -124,7 +124,7 @@ float Controls::pid_calculate(float target, float current, float kp, float ki, f
     return u;
 }
 
-float Controls::ff(float target_angular_speed, bool is_right) {
+float Controls::ff(const float target_angular_speed, bool is_right) {
     // if (is_right) {
     //     return (target_angular_speed + 20) *0.78 + 22.7;
     // }
