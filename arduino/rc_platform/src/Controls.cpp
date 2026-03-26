@@ -125,18 +125,24 @@ float Controls::pid_calculate(float target, float current, float kp, float ki, f
 }
 
 float Controls::ff(float target_angular_speed, bool is_right) {
-    // PWM 65: 55rad/s
-    // PWM 60: 48rad/s
-    // PWM 55: 40rad/s
-    // PWM 50: 35rad/s
-    // PWM 45: 28rad/s
-    // PWM 40: 23rad/s
-    // PWM 35: 16rad/s
-    // fit with excel: ff = 0.78x + 22.7 
-    if (is_right) {
-        return (target_angular_speed + 20) *0.78 + 22.7;
+    // if (is_right) {
+    //     return (target_angular_speed + 20) *0.78 + 22.7;
+    // }
+    // return target_angular_speed * 0.78 + 22.7;
+
+    // Small controller
+    // if (is_right) {
+    //     return target_angular_speed * 1.35 + 44.6;
+    // }
+    // return target_angular_speed * 0.936 + 47;
+
+    // New
+    if (!is_right) {
+        return 10.9 + 8.42 * log(target_angular_speed);
+    } else {
+        return 10.7 + 8.62 * log(target_angular_speed);
     }
-    return target_angular_speed * 0.78 + 22.7;
+
 }
 
 // Returns [pred state, pred covariance]
