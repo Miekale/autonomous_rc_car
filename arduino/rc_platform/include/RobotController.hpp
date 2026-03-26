@@ -33,8 +33,6 @@ private:
     IMUGY61& _imu;
     Controls _controls;
 
-    float v_target;
-    float w_target;
 
 public: 
     RobotController(EncoderAS5600& left_encoder, EncoderAS5600& right_encoder, 
@@ -47,10 +45,13 @@ public:
 
     // Motors
     void init_motors();
-    void execute_v_w_command();
+    void execute_v_w_command(float dt);
     void update_v_w_command(float v, float w);
     void set_m_l_speed(float percent);
     void set_m_r_speed(float percent);
+
+    float v_target;
+    float w_target;
 };
 
 #endif

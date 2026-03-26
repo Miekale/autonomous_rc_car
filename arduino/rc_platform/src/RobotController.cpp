@@ -17,6 +17,8 @@ RobotController::RobotController(EncoderAS5600& left_encoder, EncoderAS5600& rig
     pinMode(_m_L_en_pin,   OUTPUT);
     _last_enc_time = millis();
     _last_time_second = millis();
+    v_target = 0;
+    w_target = 0;
 }
 
 void RobotController::openClaw() {
@@ -97,34 +99,34 @@ void RobotController::update_v_w_command(float v, float w) {
     w_target = w;
 }
 
-void RobotController::execute_v_w_command() {
+void RobotController::execute_v_w_command(float dt) {
     float a_x = _imu.getX();
-    Serial.print("IMU a_x: "); Serial.println(a_x, 5);
+    //Serial.print("IMU a_x: "); Serial.println(a_x, 5);
 
-    uint32_t now = millis();
-    float dt = (now - _last_enc_time) / 1000.0f;
-    _last_enc_time = now;
-
-    Serial.print(F("dt: ")); Serial.println(dt);  // add here
+    //Serial.print(F("dt: ")); Serial.println(dt, 5);  // add here
 
     _left_encoder.update(dt);
     _right_encoder.update(dt);
 
+    //Serial.print("left encoder ticks: ");Serial.println(_left_encoder.getTicks());
+    //Serial.print("right encoder ticks: ");Serial.println(_right_encoder.getTicks());
+
     float w_l = _left_encoder.getVelocity();   // rad/s
     float w_r = _right_encoder.getVelocity();
 
-    Serial.print("Encoder readings: ");Serial.print(w_l); Serial.print(" "); Serial.println(w_r);
+    //Serial.print("Encoder readings: ");Serial.print(w_l); Serial.print(" "); Serial.println(w_r);
 
-    linalg::FloatPair command = _controls.step(a_x, w_l, w_r, v_target, w_target);
+    linalg::FloatPair command = _controls.step(a_x, w_l, w_r, v_target, w_target, dt);
     float left_wheel_pwm = command.first;
     float right_wheel_pwm = command.second;
 
     Serial.print("Executing desired PWM speeds for l and r: "); Serial.print(command.first, 4); Serial.print(" "); Serial.println(command.second, 4);
+    Serial.print("For desired speeds of wl, and wr: "); Serial.print(w_l, 4); Serial.print(" "); Serial.println(w_r, 4);
 
     left_wheel_pwm = min(left_wheel_pwm, 255);
     left_wheel_pwm = max(left_wheel_pwm, 0);
-    right_wheel_pwm = min(left_wheel_pwm, 255);
-    right_wheel_pwm = max(left_wheel_pwm, 0);
+    right_wheel_pwm = min(right_wheel_pwm, 255);
+    right_wheel_pwm = max(right_wheel_pwm, 0);
 
     digitalWrite(_m_L_high_pin, HIGH);
     digitalWrite(_m_L_low_pin, LOW);
@@ -134,8 +136,8 @@ void RobotController::execute_v_w_command() {
     digitalWrite(_m_R_low_pin, LOW);
     analogWrite(_m_R_en_pin, right_wheel_pwm);
 
+    // Control loop speed sanity checker
     _second_count++;
-
     if (_second_count >= freq) {
         // One full second of iterations has elapsed
         uint32_t elapsed = millis() - _last_time_second;

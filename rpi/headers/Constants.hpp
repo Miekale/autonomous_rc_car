@@ -13,11 +13,11 @@ const float WHEEL_TO_WHEEL_DISTANCE = 182; // mm
 const double BULLSEYE_DISTANCE_STOP_LF = 100;
 const double GOAL_DISTANCE_STOP_LF = 100;
 
-const float LOOK_AHEAD_DISTANCE = 300;
+const float LOOK_AHEAD_DISTANCE = 500;
 const float LOOK_AHEAD_TOL = 200; 
 const float K_CURVE = 1;
 const float K_VELOCITY = 1;
-const float MAX_LINEAR_VELOCITY = 200; // mm/s
+const float MAX_LINEAR_VELOCITY = 1000; // mm/s
 
 const speed_t SERIAL_BAUD_RATE = B115200;
 

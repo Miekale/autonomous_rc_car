@@ -71,7 +71,7 @@ std::pair<float, float> PurePursuit::getControl(Position currPos, Position targe
     std::cout << "getControl: " << "scaled_curvature: " << scaled_curvature << std::endl;
 
     float velocity = maxLinearVel / (1 + K_velocity * abs(scaled_curvature)); // tune velocity based on curvature
-    float turn_rel_speed = WHEEL_TO_WHEEL_DISTANCE * std::sin(turn_error) * velocity / LOOK_AHEAD_DISTANCE;
+    float turn_rel_speed = WHEEL_TO_WHEEL_DISTANCE * std::sin(turn_error) * velocity / distance;
     float angularVel = 2 * turn_rel_speed / WHEEL_TO_WHEEL_DISTANCE * K_VELOCITY;
 
     return {velocity, angularVel};

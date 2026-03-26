@@ -83,7 +83,7 @@ private:
 
     int MIN_POINTS = 3; // min points for a cluster to be considered a valid line
 
-    int FRAME_WIDTH = 1620;
+    int FRAME_WIDTH = 1920;
     int FRAME_HEIGHT = 1080;
 
     // ── HSV thresholds ────────────────────────────────────────────────────────

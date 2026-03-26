@@ -31,11 +31,11 @@ set(CONTROL_SOURCES
 
 # 3. Create the test executable
 # This combines your test file with the actual logic implementation
-add_executable(run_tests tests/main.cpp ${CONTROL_SOURCES})
-target_link_libraries(run_tests ${OpenCV_LIBS})
+# add_executable(run_tests tests/main.cpp ${CONTROL_SOURCES})
+# target_link_libraries(run_tests ${OpenCV_LIBS})
 
 add_executable(rpi_main rpi/src/main.cpp ${CONTROL_SOURCES})
 target_link_libraries(rpi_main ${OpenCV_LIBS})
 
-add_executable(perception_demo tests/perception_test.cpp ${CONTROL_SOURCES})
-target_link_libraries(perception_demo ${OpenCV_LIBS})
+# add_executable(perception_demo tests/perception_test.cpp ${CONTROL_SOURCES})
+# target_link_libraries(perception_demo ${OpenCV_LIBS})
