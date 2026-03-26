@@ -58,7 +58,10 @@ void loop() {
     dt = (now - last_enc_time) / 1000.0f;
     last_enc_time = now;
     handler->update();
-    robot->execute_v_w_command();
+    // robot->update_v_w_command(2500, 0);
+    Serial.print("Executing commands: "); Serial.print(robot->v_target);Serial.print(" ");Serial.println(robot->w_target);
+    robot->execute_v_w_command(dt);
+    Serial.println("\n\n");
 }
 
 // uint32_t time = 0;

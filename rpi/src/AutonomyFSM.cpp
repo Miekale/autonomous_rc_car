@@ -32,7 +32,7 @@ void AutonomyFSM::step() {
             do_lf_pre_rescue();
             break;
         case RESCUING:
-            do_rescuing();
+            do_lf_pre_rescue();
             break;
         case LF_POST_RESCUE:
             do_lf_post_rescue();

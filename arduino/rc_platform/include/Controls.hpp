@@ -48,7 +48,7 @@ public:
 
     Controls();
 
-    FloatPair step(float a_x, float w_l_enc, float w_r_enc, float pps_vl, float pps_w);
+    FloatPair step(float a_x, float w_l_enc, float w_r_enc, float pps_vl, float pps_w, float dt);
 
     uint32_t last_time;
     uint32_t time_delta;
@@ -63,6 +63,8 @@ public:
     const float kp_right = kp_left;
     const float ki_right = 2.5;
     float accum_error_right = 0; 
+
+    const float integral_clamp = 150;
 
     float pid_calculate(float target, float current, float kp, float ki, float &accum_error, float dt);
 

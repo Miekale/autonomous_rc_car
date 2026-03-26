@@ -57,19 +57,24 @@ void EncoderAS5600::reset() {
 
 // In update(), track velocity internally
 void EncoderAS5600::update(float dt) {
-    if (dt < 0.001f) return;
-
+    
     uint16_t currentRaw = readRaw();
+    
     if (currentRaw > 4095) return;
+    
 
     int16_t delta = currentRaw - prevRaw;
+
     if (delta > 2048)       delta -= 4096;
     else if (delta < -2048) delta += 4096;
 
     if (_invert) delta = -delta;
     totalTicks += delta;
-    velocity = (delta * (2.0f * PI / 4096.0f)) / dt;  // rad/s
     prevRaw = currentRaw;
+    if (dt > 0.001f) {
+        velocity = (delta * (2.0f * PI / 4096.0f)) / dt;  // rad/s
+    }
+    
 }
 
 float EncoderAS5600::getVelocity() const { return velocity; }

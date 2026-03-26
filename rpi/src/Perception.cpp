@@ -25,13 +25,20 @@ static double now_sec()
 
 Perception::Perception(std::string camera_device, bool video_file, bool debug)
 {
+    std::cout << "Init" << std::endl;
     if (video_file) {
         std::cout << "looking for: " << camera_device << std::endl;
         _cap = cv::VideoCapture(camera_device);
     } else {
+        std::cout << "Opening camera..." << std::endl;
         _cap = cv::VideoCapture(std::stoi(camera_device));
-        _cap.set(cv::CAP_PROP_FRAME_HEIGHT, FRAME_HEIGHT);
-        _cap.set(cv::CAP_PROP_FRAME_WIDTH, FRAME_WIDTH);
+        _cap.set(cv::CAP_PROP_FOURCC, cv::VideoWriter::fourcc('M','J','P','G'));
+        _cap.set(cv::CAP_PROP_FRAME_WIDTH, 1920);
+        _cap.set(cv::CAP_PROP_FRAME_HEIGHT, 1080);
+        _cap.set(cv::CAP_PROP_FPS, 30);
+        // _cap = cv::VideoCapture(std::stoi(camera_device));
+        // _cap.set(cv::CAP_PROP_FRAME_HEIGHT, FRAME_HEIGHT);
+        // _cap.set(cv::CAP_PROP_FRAME_WIDTH, FRAME_WIDTH);
     }
 
     if (!_cap.isOpened()) {
@@ -408,7 +415,7 @@ cv::Mat Perception::get_latest_bgr_frame()
     std::lock_guard<std::mutex> lock(_mtx);
     _cap.read(_latest_bgr_frame);
     _has_frame = true;
-    
+    std::cout << "w, h: " << _latest_bgr_frame.cols << ", " << _latest_bgr_frame.rows  << std::endl;
     return _latest_bgr_frame;
 }
 

@@ -47,56 +47,59 @@ Controls::Controls() {
     estimated_state = Vec3();
 }
 
-FloatPair Controls::step(float a_x, float w_l_enc, float w_r_enc, float pps_vl, float pps_w) {
+FloatPair Controls::step(float a_x, float w_l_enc, float w_r_enc, float pps_vl, float pps_w, float dt) {
     sensor[0] = w_l_enc;   // raw rad/s from left encoder
     sensor[2] = w_r_enc;   // raw rad/s from right encoder
 
     // save time and time delta
-    uint32_t now = millis();
-    time_delta   = now - last_time;
-    last_time    = now;
-    
-    A.idx(0, 1) = time_delta;
+    // A.idx(0, 1) = dt;
     // KF 
-    auto [pred_state, pred_P] = predict_step(A, estimated_state, P_covariance, Q_enc, time_delta, a_x);
-    auto [est_state, est_P]   = correct_step(sensor, H_enc, R_enc, pred_state, pred_P);
+    // auto [pred_state, pred_P] = predict_step(A, estimated_state, P_covariance, Q_enc, time_delta, a_x);
+    // auto [est_state, est_P]   = correct_step(sensor, H_enc, R_enc, pred_state, pred_P);
 
-    Serial.print(F("est v: ")); Serial.print(est_state[0]);
-    Serial.print(F(" est a: ")); Serial.print(est_state[1]);
-    Serial.print(F(" est w: ")); Serial.println(est_state[2]);
-    Serial.println("P: ");
-    serial_print_mat3(est_P);
+    // Serial.print(F("est v: ")); Serial.print(est_state[0]);
+    // Serial.print(F(" est a: ")); Serial.print(est_state[1]);
+    // Serial.print(F(" est w: ")); Serial.println(est_state[2]);
+    // Serial.println("P: ");
+    // serial_print_mat3(est_P);
 
     // Update before next time step
-    estimated_state = est_state;
-    P_covariance    = est_P;
+    // estimated_state = est_state;
+    // P_covariance    = est_P;
 
     // reset taget
     target_state[0] = pps_vl;
     target_state[2] = pps_w;
 
     auto [w_l_target, w_r_target ] = inverse_kinematics(pps_vl, pps_w);
+    //Serial.print("w_l_target:");Serial.println(w_l_target);
+    //Serial.print("w_r_target:");Serial.println(w_r_target);
 
-    Serial.println("right PID ------");
+    //Serial.println("right PID ------");
     float w_l_pwm = pid_calculate(
         w_l_target, 
         w_l_enc,
         kp_left, 
         ki_left,
         accum_error_left,
-        time_delta);
+        dt);
 
-    Serial.println("right PID ------");
+    //Serial.println("right PID ------");
     float w_r_pwm = pid_calculate(
         w_r_target, 
         w_r_enc,
         kp_right, 
         ki_right,
         accum_error_right,
-        time_delta);
+        dt);
 
     float left_ff = ff(w_l_target, false);
+   // Serial.print("left_ff:");Serial.println(left_ff);
+    //Serial.print("w_l_pwm:");Serial.println(w_l_pwm);
+
     float right_ff = ff(w_r_target, true);
+    //Serial.print("right_ff:");Serial.println(right_ff);
+    //Serial.print("w_r_pwm:");Serial.println(w_r_pwm);
 
     w_l_pwm += left_ff;
     w_r_pwm += right_ff;
@@ -108,8 +111,13 @@ float Controls::pid_calculate(float target, float current, float kp, float ki, f
     float error = target - current;
     accum_error += error;
 
+    accum_error = max(-integral_clamp, accum_error);
+    accum_error = min(accum_error, integral_clamp);
+
     Serial.print("Error: ");
     Serial.println(error);
+    Serial.print("Accum Error: ");
+    Serial.println(accum_error);
 
     float u = error*kp + accum_error*ki*dt;
 
@@ -150,7 +158,7 @@ StatePair Controls::correct_step(Vec3 z_sensor, Mat3 H, Mat3 R, Vec3 pred_state,
     // Serial.println();
 
     Vec3 innovation = z_sensor - H * pred_state;
-    Serial.print(F("Innovation: "));
+    //Serial.print(F("Innovation: "));
     serial_print_vec3(innovation);
     Serial.println();
 
@@ -188,8 +196,8 @@ FloatPair Controls::forward_kinematics(float w_r, float w_l) {
 
 FloatPair Controls::inverse_kinematics(float v, float w) {
     // Implements IK mapping from local-frame linear/angular velocities -> wheel rot speed
-    float w_r = 1 / WHEEL_RADIUS_MM * v + 1 / WHEEL_RADIUS_MM * LENGTH_WHEEL_TO_WHEEL / 2 * w*3; 
-    float w_l = 1 / WHEEL_RADIUS_MM * v - 1 / WHEEL_RADIUS_MM * LENGTH_WHEEL_TO_WHEEL / 2 * w*3; 
+    float w_r = 1 / WHEEL_RADIUS_MM * v + 1 / WHEEL_RADIUS_MM * LENGTH_WHEEL_TO_WHEEL / 2 * w; 
+    float w_l = 1 / WHEEL_RADIUS_MM * v - 1 / WHEEL_RADIUS_MM * LENGTH_WHEEL_TO_WHEEL / 2 * w; 
 
     return FloatPair{w_r, w_l};
 }
