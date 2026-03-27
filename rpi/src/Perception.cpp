@@ -43,10 +43,10 @@ Perception::Perception(std::string camera_device, bool video_file, bool debug, b
     }
 
     if (file_saving) {
-    int codec = cv::VideoWriter::fourcc('M', 'J', 'P', 'G');
-    bool ok = _video_writer.open("perception_debug.avi", codec, 30,
-                  cv::Size(int(FRAME_WIDTH / 1.5), int(FRAME_HEIGHT / 1.5)), true);
-    std::cout << "VideoWriter opened: " << ok << std::endl;
+        int codec = cv::VideoWriter::fourcc('M', 'J', 'P', 'G');
+        bool ok = _video_writer.open("perception_debug.avi", codec, 30,
+                    cv::Size(int(FRAME_WIDTH / 1.5), int(FRAME_HEIGHT / 1.5)), true);
+        std::cout << "VideoWriter opened: " << ok << std::endl;
     }
 
     // Intrinsic parameter init
@@ -274,10 +274,6 @@ void Perception::make_debug_grid_with_pursuit(
     const std::optional<Position>& bullseye, 
     const std::optional<Position>& end_goal)
 {
-    if (!_debug) {
-        return;
-    }
-    
     cv::Mat frame = _latest_bgr_frame;
     cv::Mat mask = _latest_detection.mask;
     cv::Mat ridge = _latest_detection.ridge;
