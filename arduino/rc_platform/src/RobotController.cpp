@@ -114,7 +114,7 @@ void RobotController::execute_v_w_command(float dt) {
     float w_l = _left_encoder.getVelocity();   // rad/s
     float w_r = _right_encoder.getVelocity();
 
-    //Serial.print("Encoder readings: ");Serial.print(w_l); Serial.print(" "); Serial.println(w_r);
+    Serial.print("Encoder readings: ");Serial.print(w_l); Serial.print(" "); Serial.println(w_r);
 
     linalg::FloatPair command = _controls.step(a_x, w_l, w_r, v_target, w_target, dt);
     float left_wheel_pwm = command.first;
@@ -123,18 +123,30 @@ void RobotController::execute_v_w_command(float dt) {
     Serial.print("Executing desired PWM speeds for l and r: "); Serial.print(command.first, 4); Serial.print(" "); Serial.println(command.second, 4);
     Serial.print("For desired speeds of wl, and wr: "); Serial.print(w_l, 4); Serial.print(" "); Serial.println(w_r, 4);
 
-    left_wheel_pwm = min(left_wheel_pwm, 255);
-    left_wheel_pwm = max(left_wheel_pwm, 0);
-    right_wheel_pwm = min(right_wheel_pwm, 255);
-    right_wheel_pwm = max(right_wheel_pwm, 0);
 
-    digitalWrite(_m_L_high_pin, HIGH);
-    digitalWrite(_m_L_low_pin, LOW);
-    analogWrite(_m_L_en_pin, left_wheel_pwm);
-
-    digitalWrite(_m_R_high_pin, HIGH);
-    digitalWrite(_m_R_low_pin, LOW);
-    analogWrite(_m_R_en_pin, right_wheel_pwm);
+    if (left_wheel_pwm > 0) {
+        left_wheel_pwm = min(left_wheel_pwm, 255);
+        digitalWrite(_m_L_high_pin, HIGH);
+        digitalWrite(_m_L_low_pin, LOW);
+        analogWrite(_m_L_en_pin, left_wheel_pwm);
+    } else {
+        left_wheel_pwm = max(left_wheel_pwm, -255);
+        digitalWrite(_m_L_high_pin, LOW);
+        digitalWrite(_m_L_low_pin, HIGH);
+        analogWrite(_m_L_en_pin, -left_wheel_pwm);
+    }
+    
+    if (right_wheel_pwm >0 ) {
+        right_wheel_pwm = min(right_wheel_pwm, 255);
+        digitalWrite(_m_R_high_pin, HIGH);
+        digitalWrite(_m_R_low_pin, LOW);
+        analogWrite(_m_R_en_pin, right_wheel_pwm);
+    } else {
+        right_wheel_pwm = max(right_wheel_pwm, -255);
+        digitalWrite(_m_R_high_pin, LOW);
+        digitalWrite(_m_R_low_pin, HIGH);
+        analogWrite(_m_R_en_pin, -right_wheel_pwm);
+    }
 
     // Control loop speed sanity checker
     _second_count++;

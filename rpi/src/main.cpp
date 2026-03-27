@@ -44,6 +44,10 @@ int main(int argc, char* argv[]) {
         auto elapsed = std::chrono::steady_clock::now() - start;
         auto sleep_for = PERIOD - elapsed;
 
+        long long ms = std::chrono::duration_cast<std::chrono::milliseconds>(elapsed).count(); 
+        
+        std::cout << "RPI Latency: " << ms << " ms" << std::endl;
+
         if (sleep_for > std::chrono::duration<double>(0)) {
            std::this_thread::sleep_for(sleep_for);
         }
