@@ -12,7 +12,8 @@ enum autonomy_state {
     LF_PRE_RESCUE,
     RESCUING,
     LF_POST_RESCUE,
-    DROPPING
+    DROPPING,
+    RETURNING
 };
 
 class AutonomyFSM {
@@ -28,11 +29,13 @@ public:
     void do_rescuing();
     void do_lf_post_rescue();
     void do_dropping();
+    void do_return();
 
     void _transition_state();
 
     Position _closest_bullseye;
     Position _goal;
+    Position _closest_dropoff;
     bool _rescued_lego_person;
     bool _dropped_lego_person;
     bool _debug;

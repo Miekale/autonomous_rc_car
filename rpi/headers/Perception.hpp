@@ -120,7 +120,7 @@ private:
     // ── Pipeline steps ────────────────────────────────────────────────────────
     cv::Mat                  get_red_mask   (const cv::Mat& bgr_image) const;
     cv::Mat                  get_blue_mask  (const cv::Mat& bgr_image) const;
-    cv::Mat                  get_green_mask (const cv::Mat& bgr_image) const 
+    cv::Mat                  get_green_mask (const cv::Mat& bgr_image) const;
     cv::Mat                  clean_mask     (const cv::Mat& mask)       const;
     cv::Mat                  extract_ridge  (const cv::Mat& mask, int height_filter, int width_filter = 0) const;
     std::vector<cv::Point2f> extract_points (const cv::Mat& ridge)      const;

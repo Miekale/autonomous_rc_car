@@ -40,6 +40,9 @@ void AutonomyFSM::step() {
         case DROPPING:
             do_dropping();
             break;
+        case RETURNING:
+            do_return();
+            break;
     }
 
     _transition_state();
@@ -72,14 +75,20 @@ void AutonomyFSM::_transition_state() {
             break;
         
         case LF_POST_RESCUE:
-            if (get_magnitude(_goal) < GOAL_DISTANCE_STOP_LF) {
+            if (get_magnitude(_closest_dropoff) < GOAL_DISTANCE_STOP_LF) {
                 std::cout << "Transitioned to: DROPPING state" << std::endl;
                 _state = DROPPING;
             }
             break;
         
         case DROPPING:
-            if (_dropped_lego_person) {
+            if (_rescued_lego_person) {
+            std::cout << "Transitioned to: LF_POST_RESCUE state" << std::endl;
+                _state = RETURNING;
+            }
+            break;
+        case RETURNING: 
+            if (get_magnitude(_goal) < GOAL_DISTANCE_STOP_LF) {
                 // Succesfully Finished the challenge!
                 std::cout << "Transitioned to: DONE state" << std::endl;
                 exit(0);  // TODO: do actual cleanup, etc. don't just close
@@ -96,6 +105,8 @@ void AutonomyFSM::do_lf_pre_rescue() {
     ).count(); // seconds with fractional part
     _perception->get_latest_bgr_frame();
     Position target_point;
+    std::vector<Position> lf_points;
+    bool has_target = false;
 
     // Query perception for bullseye, update if exists
     std::optional<Position> bullseye = _perception->get_landmark_centroid(Perception::CentroidColor::BLUE);
@@ -105,12 +116,13 @@ void AutonomyFSM::do_lf_pre_rescue() {
         std::cout << "Updated closest bullseye to: " << bullseye.value().x << ", " << bullseye.value().y << std::endl;
         _closest_bullseye.theta = bullseye->theta;
 
-        if (get_magnitude(bullseye) < LOOK_AHEAD_DISTANCE) {
-            target_point = bullseye;
+        if (get_magnitude(bullseye.value()) < LOOK_AHEAD_DISTANCE) {
+            target_point = bullseye.value();
+            has_target = true;
         }
     }
 
-    if (!target_point) {
+    if (!has_target) {
         std::vector<Position> lf_points = _perception->get_latest_line_follow_points_2d();
         std::cout << "do_lf_pre_rescue: Got " << lf_points.size() << " lf_points" << std::endl;
         if (lf_points.size() > 1){
@@ -129,7 +141,7 @@ void AutonomyFSM::do_lf_pre_rescue() {
     _serial->readAndPrint();
 
     if (_debug) {
-        _perception->make_debug_grid_with_pursuit(target_point, bullseye, end_goal);
+        _perception->make_debug_grid_with_pursuit(target_point, bullseye, std::nullopt, std::nullopt);
     }
 
     std::cout <<"do_lf_pre_rescue: done" << std::endl;
@@ -151,20 +163,23 @@ void AutonomyFSM::do_lf_post_rescue() {
     ).count(); // seconds with fractional part
     _perception->get_latest_bgr_frame();
     Position target_point;
+    std::vector<Position> lf_points;
+    bool has_target = false;
 
-    std::optional<Position> end_goal = _perception->get_latest_end_goal_point();
-    if (end_goal) {
-        _goal.x = end_goal->x;
-        _goal.y = end_goal->y;
-        std::cout << "End goal at: " << end_goal.value().x << ", " << end_goal.value().y << std::endl;
+    std::optional<Position> dropoff = _perception->get_landmark_centroid(Perception::CentroidColor::GREEN);
+    if (dropoff) {
+        _closest_dropoff.x = dropoff->x;
+        _closest_dropoff.y = dropoff->y;
+        std::cout << "End goal at: " << dropoff.value().x << ", " << dropoff.value().y << std::endl;
 
-        if (get_magnitude(end_goal) <= LOOK_AHEAD_DISTANCE) {
-            target_point = end_goal;
+        if (get_magnitude(dropoff.value()) <= LOOK_AHEAD_DISTANCE) {
+            target_point = dropoff.value();
+            has_target = true;
         }
     }
-    if (!target_point) {
+    if (!has_target) {
         _perception->get_latest_line_follow_points();
-        std::vector<Position> lf_points = _perception->get_latest_line_follow_points();
+        lf_points = _perception->get_latest_line_follow_points();
         target_point = _pure_pursuit->findLookaheadPoint(Position({0,0,0}), lf_points);
     }
 
@@ -172,7 +187,7 @@ void AutonomyFSM::do_lf_post_rescue() {
     std::pair<float, float> command = _pure_pursuit->getControl(Position({0,0,0}), target_point, lf_points);
 
     if (_debug) {
-        _perception->make_debug_grid_with_pursuit(target_point);
+        _perception->make_debug_grid_with_pursuit(target_point, std::nullopt, dropoff, std::nullopt);
     }
 
 }
@@ -183,4 +198,41 @@ void AutonomyFSM::do_dropping() {
         std::chrono::system_clock::now().time_since_epoch()
     ).count(); // seconds with fractional part
     _dropped_lego_person = _rescue_controller->step_drop(*_serial, timestamp);
+}
+
+
+void AutonomyFSM::do_return() {
+    // Query perception for points list
+    double timestamp = std::chrono::duration<double>(
+        std::chrono::system_clock::now().time_since_epoch()
+    ).count(); // seconds with fractional part
+    _perception->get_latest_bgr_frame();
+    Position target_point;
+    std::vector<Position> lf_points;
+    bool has_target = false;
+
+    std::optional<Position> end_goal = _perception->get_latest_end_goal_point();
+    if (end_goal) {
+        _goal.x = end_goal->x;
+        _goal.y = end_goal->y;
+        std::cout << "End goal at: " << end_goal.value().x << ", " << end_goal.value().y << std::endl;
+
+        if (get_magnitude(end_goal.value()) <= LOOK_AHEAD_DISTANCE) {
+            target_point = end_goal.value();
+            has_target = true;
+        }
+    }
+    if (!has_target) {
+        _perception->get_latest_line_follow_points();
+        lf_points = _perception->get_latest_line_follow_points();
+        target_point = _pure_pursuit->findLookaheadPoint(Position({0,0,0}), lf_points);
+    }
+
+    // Run PPS controller
+    std::pair<float, float> command = _pure_pursuit->getControl(Position({0,0,0}), target_point, lf_points);
+
+    if (_debug) {
+        _perception->make_debug_grid_with_pursuit(target_point, std::nullopt, std::nullopt, end_goal);
+    }
+
 }
