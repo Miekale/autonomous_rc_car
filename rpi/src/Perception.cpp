@@ -33,8 +33,8 @@ Perception::Perception(std::string camera_device, bool video_file, bool debug, b
         std::cout << "Opening camera..." << std::endl;
         _cap = cv::VideoCapture(std::stoi(camera_device));
         _cap.set(cv::CAP_PROP_FOURCC, cv::VideoWriter::fourcc('M','J','P','G'));
-        _cap.set(cv::CAP_PROP_FRAME_WIDTH, 1920);
-        _cap.set(cv::CAP_PROP_FRAME_HEIGHT, 1080);
+        _cap.set(cv::CAP_PROP_FRAME_WIDTH, FRAME_WIDTH);
+        _cap.set(cv::CAP_PROP_FRAME_HEIGHT, FRAME_HEIGHT);
         _cap.set(cv::CAP_PROP_FPS, 30);
     }
 
