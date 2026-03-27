@@ -102,6 +102,18 @@ cv::Mat Perception::get_blue_mask(const cv::Mat& bgr_image) const
     return mask;
 }
 
+cv::Mat Perception::get_green_mask(const cv::Mat& bgr_image) const 
+{
+    cv::Mat blurred;
+    cv::GaussianBlur(bgr_image, blurred, cv::Size(3,3), 0);
+    cv::Mat hsv;
+    cv::cvtColor(blurred, hsv, cv::COLOR_BGR2HSV);
+
+    cv::Mat mask;
+    cv::inRange(hsv, _lower_green, _upper_green, mask);
+    return mask;
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Step 2 – Morphological cleanup
 // ─────────────────────────────────────────────────────────────────────────────
@@ -267,6 +279,7 @@ cv::Point2d Perception::robot_to_image(int x, int y) {
 void Perception::make_debug_grid_with_pursuit(
     const std::optional<Position>& target_point, 
     const std::optional<Position>& bullseye, 
+    const std::optional<Position>& dropoff, 
     const std::optional<Position>& end_goal)
 {
     if (!_debug) {
@@ -333,6 +346,18 @@ void Perception::make_debug_grid_with_pursuit(
                    cv::Scalar(255, 0, 0),          
                    1, cv::LINE_AA);
     }
+
+    // --- drop off point ---
+    if (dropoff.has_value()) {
+        std::cout << "dropoff point x, y: " << dropoff.value().x << ", " << dropoff.value().y << std::endl;
+        const cv::Point2d tp_px = robot_to_image(dropoff.value().x, dropoff.value().y);
+
+        cv::circle(ridge_bgr, cv::Point(tp_px.x, tp_px.y),
+                   10,                              // radius
+                   cv::Scalar(255, 0, 0),          
+                   1, cv::LINE_AA);
+    }
+        
 
     // --- End goal point ---
     if (end_goal.has_value()) {
@@ -466,22 +491,31 @@ std::vector<Position> Perception::get_latest_line_follow_points_2d()
     return positions;
 }
 
-std::optional<Position> Perception::get_latest_bullsey_point()
+std::optional<Position> Perception::get_landmark_centroid(Perception::CentroidColor color)
 {
     double t0 = now_sec();
-    cv::Mat blue_mask = get_blue_mask(_latest_bgr_frame);
+    cv::Mat mask;
+    switch (color) {
+        case CentroidColor::GREEN:
+            mask = get_green_mask(_latest_bgr_frame);
+            break;
+        case CentroidColor::BLUE:
+        default:
+            mask = get_blue_mask(_latest_bgr_frame);
+            break;
+    }
 
     double t1 = now_sec();
-    blue_mask = clean_mask(blue_mask);
+    mask = clean_mask(mask);
 
     double t2 = now_sec();
-    cv::Mat blue_ridge = extract_ridge(blue_mask, 0, 10);
+    cv::Mat ridge = extract_ridge(mask, 0, 10);
 
     double t3 = now_sec();
-    auto blue_pts2d = extract_points(blue_ridge);
+    auto pts2d = extract_points(ridge);
 
     double t4 = now_sec();
-    std::optional<cv::Point2f> blue_center = get_center_point(blue_pts2d);
+    std::optional<cv::Point2f> center = get_center_point(pts2d);
 
     double t5 = now_sec();
 
@@ -489,7 +523,7 @@ std::optional<Position> Perception::get_latest_bullsey_point()
     {
 
         std::cout << "=======================\n"
-                  << "3D blue points: " << blue_pts2d.size() << "\n"
+                  << "3D points from landmark: " << pts2d.size() << "\n"
                   << "End goal detection took   " << (t5 - t0) << " s\n"
                   << "Mask             " << (t1 - t0) << " s\n"
                   << "Clean            " << (t2 - t1) << " s\n"
@@ -499,8 +533,8 @@ std::optional<Position> Perception::get_latest_bullsey_point()
                 << "=======================\n";
     }
 
-    if (blue_center.has_value()) {
-        auto robot_frame = image_to_robot(blue_center.value().x, blue_center.value().y);
+    if (center.has_value()) {
+        auto robot_frame = image_to_robot(center.value().x, center.value().y);
         Position center_camera_frame {robot_frame.x, robot_frame.y};
         if (robot_frame.x < BULLSEYE_DISTANCE_STOP_LF) {
             return Position{0, 0, 0};

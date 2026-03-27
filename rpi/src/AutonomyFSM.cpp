@@ -32,7 +32,7 @@ void AutonomyFSM::step() {
             do_lf_pre_rescue();
             break;
         case RESCUING:
-            do_lf_pre_rescue();
+            do_rescuing();
             break;
         case LF_POST_RESCUE:
             do_lf_post_rescue();
@@ -98,7 +98,7 @@ void AutonomyFSM::do_lf_pre_rescue() {
     Position target_point;
 
     // Query perception for bullseye, update if exists
-    std::optional<Position> bullseye = _perception->get_latest_bullsey_point();
+    std::optional<Position> bullseye = _perception->get_landmark_centroid(Perception::CentroidColor::BLUE);
     if (bullseye) {
         _closest_bullseye.x = bullseye->x;
         _closest_bullseye.y = bullseye->y;
