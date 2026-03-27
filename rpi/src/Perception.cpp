@@ -23,7 +23,7 @@ static double now_sec()
 // Constructor / Destructor
 // ─────────────────────────────────────────────────────────────────────────────
 
-Perception::Perception(std::string camera_device, bool video_file, bool debug)
+Perception::Perception(std::string camera_device, bool video_file, bool debug, bool file_saving)
 {
     std::cout << "Init" << std::endl;
     if (video_file) {
@@ -36,13 +36,17 @@ Perception::Perception(std::string camera_device, bool video_file, bool debug)
         _cap.set(cv::CAP_PROP_FRAME_WIDTH, 1920);
         _cap.set(cv::CAP_PROP_FRAME_HEIGHT, 1080);
         _cap.set(cv::CAP_PROP_FPS, 30);
-        // _cap = cv::VideoCapture(std::stoi(camera_device));
-        // _cap.set(cv::CAP_PROP_FRAME_HEIGHT, FRAME_HEIGHT);
-        // _cap.set(cv::CAP_PROP_FRAME_WIDTH, FRAME_WIDTH);
     }
 
     if (!_cap.isOpened()) {
         std::cerr << "Failed to open camera\n";
+    }
+
+    if (file_saving) {
+    int codec = cv::VideoWriter::fourcc('M', 'J', 'P', 'G');
+    bool ok = _video_writer.open("perception_debug.avi", codec, 30,
+                  cv::Size(int(FRAME_WIDTH / 1.5), int(FRAME_HEIGHT / 1.5)), true);
+    std::cout << "VideoWriter opened: " << ok << std::endl;
     }
 
     // Intrinsic parameter init
@@ -63,6 +67,7 @@ Perception::Perception(std::string camera_device, bool video_file, bool debug)
     // Latest BGR frame
     _latest_bgr_frame = cv::Mat();
     _latest_detection = DetectionResult();
+    _file_saving = file_saving;
     _debug = debug;
 }
 
@@ -365,11 +370,17 @@ void Perception::make_debug_grid_with_pursuit(
 
     cv::resize(grid, grid, {int(FRAME_WIDTH / 1.5), int(FRAME_HEIGHT / 1.5)}, 0, 0, cv::INTER_NEAREST);
 
-    cv::imshow("Perception Debug", grid);
-    int key = cv::waitKey(1);
-    if (key == 'q' || key == 27) {
-        exit(0);
-    };   // q or ESC
+    if (_file_saving) {
+        if (_video_writer.isOpened()) {
+            _video_writer << grid;
+        }
+    } else {
+        cv::imshow("Perception Debug", grid);
+        int key = cv::waitKey(1);
+        if (key == 'q' || key == 27) {
+            exit(0);
+        }
+    }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -415,7 +426,6 @@ cv::Mat Perception::get_latest_bgr_frame()
     std::lock_guard<std::mutex> lock(_mtx);
     _cap.read(_latest_bgr_frame);
     _has_frame = true;
-    std::cout << "w, h: " << _latest_bgr_frame.cols << ", " << _latest_bgr_frame.rows  << std::endl;
     return _latest_bgr_frame;
 }
 

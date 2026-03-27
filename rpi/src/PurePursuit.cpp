@@ -51,7 +51,7 @@ Position PurePursuit::findLookaheadPoint(Position currPos, const std::vector<Pos
     return path[bestIndex];
 }
 
-std::pair<float, float> PurePursuit::getControl(Position currPos, Position target, const std::vector<Position>& path) {
+std::pair<float, float> PurePursuit::getControl(Position currPos, Position target) {
 
     // transform target point to locale coords (robot faces down the x)
     float dx = target.x - currPos.x;
