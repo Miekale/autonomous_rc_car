@@ -87,6 +87,9 @@ std::pair<float, float> PurePursuit::getControl(Position currPos, Position targe
     //     std::cout << "scale: " << scale << std::endl;
     // }
 
+    // Update look-ahead distance based on current speed
+    // lookAheadDist = LOOK_AHEAD_DISTANCE * () 
+
     return {velocity, angularVel};
 }
 

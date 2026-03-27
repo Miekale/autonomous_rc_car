@@ -144,7 +144,7 @@ void Serial::readAndPrint() {
 
     float a = 17.01f;
     a += dist(gen);
-    std::cout << "[Arduino]: application latency is " << a << std::endl;
+    //std::cout << "[Arduino]: application latency is " << a << std::endl;
 }
 
 uint32_t Serial::getMillis() {

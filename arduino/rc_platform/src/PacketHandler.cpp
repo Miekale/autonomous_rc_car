@@ -37,7 +37,8 @@ void PacketHandler::update() {
         float latency = arduinoElapsed - timeSinceSend;
 
         dispatch(infobuf, len);
-
+        _serial.print("actual latency is: ");
+        _serial.println(latency);
         _serial.write(0x06);
     } else {
         _serial.write(0x15);
