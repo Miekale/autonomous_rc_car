@@ -16,6 +16,10 @@
 class Perception {
 public:
 
+    enum class CentroidColor {
+        GREEN, BLUE
+    };
+
     struct Segment {
         cv::Point2f p1, p2;
         cv::Point2f dir;
@@ -59,12 +63,14 @@ public:
     // ── FSM / controller interface ────────────────────────────────────────────
     std::vector<Position>   get_latest_line_follow_points();
     std::vector<Position>   get_latest_line_follow_points_2d();
-    std::optional<Position> get_latest_bullsey_point();
     std::optional<Position> get_latest_end_goal_point();
+    std::optional<Position> get_landmark_centroid(Perception::CentroidColor color);
+
 
     void make_debug_grid_with_pursuit(
         const std::optional<Position>& target_point = std::nullopt,
         const std::optional<Position>& bullseye = std::nullopt,
+        const std::optional<Position>& dropoff = std::nullopt,
         const std::optional<Position>& end_goal = std::nullopt
     );
 
@@ -98,6 +104,10 @@ private:
     const cv::Scalar _lower_blue = cv::Scalar(110, 110, 40);
     const cv::Scalar _upper_blue = cv::Scalar(135, 255, 255);
 
+    const cv::Scalar _lower_green = cv::Scalar(75, 80, 100);
+    const cv::Scalar _upper_green = cv::Scalar(100, 255, 255);
+
+
 
     // ── Latest frame (written by set_latest_bgr_frame) ───────────────────────
     cv::VideoCapture _cap;
@@ -110,6 +120,7 @@ private:
     // ── Pipeline steps ────────────────────────────────────────────────────────
     cv::Mat                  get_red_mask   (const cv::Mat& bgr_image) const;
     cv::Mat                  get_blue_mask  (const cv::Mat& bgr_image) const;
+    cv::Mat                  get_green_mask (const cv::Mat& bgr_image) const;
     cv::Mat                  clean_mask     (const cv::Mat& mask)       const;
     cv::Mat                  extract_ridge  (const cv::Mat& mask, int height_filter, int width_filter = 0) const;
     std::vector<cv::Point2f> extract_points (const cv::Mat& ridge)      const;
