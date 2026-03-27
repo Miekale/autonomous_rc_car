@@ -34,9 +34,7 @@ private:
     Position rotatePosition(float dx, float dy, float angle);
 
 public:
-  PurePursuit(float lookAheadDist, float lookAheadTol,
-            float K_curve, float K_velocity,
-            float maxLinearVel); 
+  PurePursuit(float lookAheadDist, float lookAheadTol, float maxLinearVel); 
     std::pair<float, float> getControl(Position currPos, Position target, const std::vector<Position>& path);
     Position findLookaheadPoint(Position currPos, const std::vector<Position>& path);
 

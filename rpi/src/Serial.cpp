@@ -203,6 +203,7 @@ int Serial::readData(char* buffer, size_t size) {
 void Serial::handshake() {
     if (!this->isOpen()) {
         std::cerr << "Failed to open serial port!" << std::endl;
+        exit(0);
         return;
     }
 

@@ -1,8 +1,7 @@
 #include "PurePursuit.hpp"
 
-PurePursuit::PurePursuit(float lookAheadDist, float lookAheadTol, float K_curve, 
-        float K_velocity, float maxLinearVel) : 
-    lookAheadDist(lookAheadDist), lookAheadTol(lookAheadTol), K_curve(K_curve), K_velocity(K_velocity), 
+PurePursuit::PurePursuit(float lookAheadDist, float lookAheadTol, float maxLinearVel):
+    lookAheadDist(lookAheadDist), lookAheadTol(lookAheadTol),
     maxLinearVel(maxLinearVel) {}
 
 Position PurePursuit::findLookaheadPoint(Position currPos, const std::vector<Position>& path) {
@@ -66,13 +65,27 @@ std::pair<float, float> PurePursuit::getControl(Position currPos, Position targe
     
     Position localeTarget = rotatePosition(dx, dy, -currPos.theta);
 
-    float scaled_curvature = K_curve * 2.0 * localeTarget.y / (std::pow(distance, 2));
+    float scaled_curvature = K_CURVE * 2.0 * localeTarget.y / (std::pow(distance, 2));
     std::cout << "getControl: " << "local target: " << localeTarget.x << ", " << localeTarget.y << std::endl;
     std::cout << "getControl: " << "scaled_curvature: " << scaled_curvature << std::endl;
 
-    float velocity = maxLinearVel / (1 + K_velocity * abs(scaled_curvature)); // tune velocity based on curvature
+    float velocity = maxLinearVel / (1 + K_VELOCITY_PENALTY * abs(scaled_curvature)); // tune velocity based on curvature
     float turn_rel_speed = WHEEL_TO_WHEEL_DISTANCE * std::sin(turn_error) * velocity / distance;
-    float angularVel = 2 * turn_rel_speed / WHEEL_TO_WHEEL_DISTANCE * K_VELOCITY;
+    float angularVel = 2 * turn_rel_speed / WHEEL_TO_WHEEL_DISTANCE * K_ANGULAR;
+
+    // Compute individual wheel speeds
+    // float half_track = WHEEL_TO_WHEEL_DISTANCE / 2.0f;
+    // float v_left  = velocity - angularVel * half_track;
+    // float v_right = velocity + angularVel * half_track;
+
+    // // Scale both down proportionally if either wheel exceeds maxLinearVel
+    // float max_wheel = std::max(std::abs(v_left), std::abs(v_right));
+    // if (max_wheel > maxLinearVel) {
+    //     float scale = maxLinearVel / max_wheel;
+    //     velocity  *= scale;
+    //     angularVel *= scale;
+    //     std::cout << "scale: " << scale << std::endl;
+    // }
 
     return {velocity, angularVel};
 }
