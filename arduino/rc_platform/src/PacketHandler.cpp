@@ -36,10 +36,6 @@ void PacketHandler::update() {
         float arduinoElapsed = (millis() - _handshakeMillis) / 1000.0f;
         float latency = arduinoElapsed - timeSinceSend;
 
-        Serial.print("Latency since send: ");
-        Serial.print(latency * 1000.0f, 3);
-        Serial.println(" ms");
-
         dispatch(infobuf, len);
 
         _serial.write(0x06);

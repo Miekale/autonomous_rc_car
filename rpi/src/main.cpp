@@ -10,15 +10,13 @@
 #include <iostream>
 #include <fstream>
 
-bool debug = true;
+bool debug = false;
 
 int main(int argc, char* argv[]) {
-    Serial serial("/dev/ttyACM1", SERIAL_BAUD_RATE);
+    Serial serial("/dev/ttyACM0", SERIAL_BAUD_RATE);
     PurePursuit pure_pursuit(
         LOOK_AHEAD_DISTANCE,
         LOOK_AHEAD_TOL,
-        K_CURVE,
-        K_VELOCITY,
         MAX_LINEAR_VELOCITY
     );
     RescueController rescue_controller;

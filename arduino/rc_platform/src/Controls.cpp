@@ -72,10 +72,10 @@ FloatPair Controls::step(float a_x, float w_l_enc, float w_r_enc, float pps_vl, 
     target_state[2] = pps_w;
 
     auto [w_l_target, w_r_target ] = inverse_kinematics(pps_vl, pps_w);
-    //Serial.print("w_l_target:");Serial.println(w_l_target);
-    //Serial.print("w_r_target:");Serial.println(w_r_target);
+    Serial.print("w_l_target:");Serial.println(w_l_target);
+    Serial.print("w_r_target:");Serial.println(w_r_target);
 
-    //Serial.println("right PID ------");
+    // Serial.println("right PID ------");
     float w_l_pwm = pid_calculate(
         w_l_target, 
         w_l_enc,
@@ -94,12 +94,12 @@ FloatPair Controls::step(float a_x, float w_l_enc, float w_r_enc, float pps_vl, 
         dt);
 
     float left_ff = ff(w_l_target, false);
-   // Serial.print("left_ff:");Serial.println(left_ff);
-    //Serial.print("w_l_pwm:");Serial.println(w_l_pwm);
+   Serial.print("left_ff:");Serial.println(left_ff);
+    Serial.print("w_l_pwm:");Serial.println(w_l_pwm);
 
     float right_ff = ff(w_r_target, true);
-    //Serial.print("right_ff:");Serial.println(right_ff);
-    //Serial.print("w_r_pwm:");Serial.println(w_r_pwm);
+    Serial.print("right_ff:");Serial.println(right_ff);
+    Serial.print("w_r_pwm:");Serial.println(w_r_pwm);
 
     w_l_pwm += left_ff;
     w_r_pwm += right_ff;
@@ -137,10 +137,19 @@ float Controls::ff(const float target_angular_speed, bool is_right) {
     // return target_angular_speed * 0.936 + 47;
 
     // New
+    if (abs(target_angular_speed) < 1) {
+        return 0;
+    }
+
+    int is_neg = 1;
+    if (target_angular_speed < 0) {
+        is_neg = -1;
+    }
+
     if (!is_right) {
-        return 10.9 + 8.42 * log(target_angular_speed);
+        return (10.9 + 8.42 * log(target_angular_speed * is_neg)) * is_neg;
     } else {
-        return 10.7 + 8.62 * log(target_angular_speed);
+        return (10.7 + 8.62 * log(target_angular_speed * is_neg)) * is_neg;
     }
 
 }

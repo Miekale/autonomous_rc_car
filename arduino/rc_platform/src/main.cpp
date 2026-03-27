@@ -57,23 +57,23 @@ void loop() {
     uint32_t now = millis();
     dt = (now - last_enc_time) / 1000.0f;
     last_enc_time = now;
-    // handler->update();
-    robot->update_v_w_command(600, -1.5);
+    handler->update();
+    // robot->update_v_w_command(600, -1.5);
     Serial.print("Executing commands: "); Serial.print(robot->v_target);Serial.print(" ");Serial.println(robot->w_target);
     robot->execute_v_w_command(dt);
     Serial.println("\n\n");
 }
 
 // uint32_t time = 0;
-// float target_left_wheel = 20;  //rad/s
-// float target_right_wheel = 20;
+// float target_left_wheel = 30;  //rad/s
+// float target_right_wheel = 15;
 
-// float kp_left = 5;
-// float ki_left = 0;
+// float kp_left = 2.5;
+// float ki_left = 0.5;
 // float accum_error_left = 0;
 
-// float kp_right = 5;
-// float ki_right = 0;
+// float kp_right = 2.5;
+// float ki_right = 0.5;
 // float accum_error_right = 0;
 
 // void loop() {
@@ -102,7 +102,7 @@ void loop() {
 
 //     Serial.println("right PID ------");
 //     float right_wheel_pwm = controls.pid_calculate(
-//         target_left_wheel, 
+//         target_right_wheel, 
 //         right_vel,
 //         kp_right, 
 //         ki_right,
