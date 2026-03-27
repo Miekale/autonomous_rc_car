@@ -35,7 +35,7 @@ private:
 
 public:
   PurePursuit(float lookAheadDist, float lookAheadTol, float maxLinearVel); 
-    std::pair<float, float> getControl(Position currPos, Position target, const std::vector<Position>& path);
+    std::pair<float, float> getControl(Position currPos, Position target);
     Position findLookaheadPoint(Position currPos, const std::vector<Position>& path);
 
 };
