@@ -10,7 +10,7 @@
 #include <iostream>
 #include <fstream>
 
-bool debug = false;
+bool debug = true;
 
 int main(int argc, char* argv[]) {
     Serial serial("/dev/ttyACM1", SERIAL_BAUD_RATE);
@@ -24,8 +24,8 @@ int main(int argc, char* argv[]) {
     RescueController rescue_controller;
 
     Perception perception = argc > 1
-        ? Perception(argv[1], true, true)
-        : Perception("0", false, debug);
+        ? Perception(argv[1], true, debug, true)
+        : Perception("0", false, debug, true);
 
     // std::ifstream f(argv[1]);
     // if (!f.is_open()) {

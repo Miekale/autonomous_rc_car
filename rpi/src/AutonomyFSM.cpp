@@ -4,12 +4,13 @@
 #include "RescueController.hpp"
 #include <cstdlib>
 
-AutonomyFSM::AutonomyFSM(PurePursuit* pure_pursuit, Perception* perception, RescueController* rescue_controller, Serial* serial, bool debug) {
+AutonomyFSM::AutonomyFSM(PurePursuit* pure_pursuit, Perception* perception, RescueController* rescue_controller, Serial* serial, bool debug, bool file_saving) {
     _pure_pursuit = pure_pursuit;
     _perception = perception;
     _rescue_controller = rescue_controller;
     _serial = serial;
     _state = INIT;
+    _file_saving = file_saving;
 
     _closest_bullseye = Position({1000, 1000, 0});
     _goal = Position({1000, 1000, 0});
@@ -94,44 +95,42 @@ void AutonomyFSM::do_lf_pre_rescue() {
     double timestamp = std::chrono::duration<double>(
         std::chrono::system_clock::now().time_since_epoch()
     ).count(); // seconds with fractional part
-
     _perception->get_latest_bgr_frame();
-    std::vector<Position> lf_points = _perception->get_latest_line_follow_points_2d();
-    std::cout << "do_lf_pre_rescue: Got " << lf_points.size() << " lf_points" << std::endl;
-    if (lf_points.size() > 1){
-        std::cout << "do_lf_pre_rescue: lf_points " << lf_points[0].x << ", " << lf_points[0].y << std::endl;
+    std::optional<Position> target_point = std::nullopt;
+
+    // Query perception for bullseye, update if exists
+    std::optional<Position> bullseye = _perception->get_latest_bullsey_point();
+    if (bullseye.has_value()) {
+        _closest_bullseye.x = bullseye->x;
+        _closest_bullseye.y = bullseye->y;
+        std::cout << "Updated closest bullseye to: " << bullseye.value().x << ", " << bullseye.value().y << std::endl;
+        _closest_bullseye.theta = bullseye->theta;
+
+        if (get_magnitude(bullseye.value()) < LOOK_AHEAD_DISTANCE) {
+            target_point = bullseye.value();
+        }
     }
 
-    // Run PPS controller
-    // TODO: the heading angle in world coords is always 0
-    Position target_point = _pure_pursuit->findLookaheadPoint(Position({0,0,0}), lf_points);
-    std::cout << "do_lf_pre_rescue: target_point " << target_point.x << ", " << target_point.y << std::endl;
+    if (!target_point.has_value()) {
+        std::vector<Position> lf_points = _perception->get_latest_line_follow_points_2d();
+        std::cout << "do_lf_pre_rescue: Got " << lf_points.size() << " lf_points" << std::endl;
+        if (lf_points.size() > 1){
+            std::cout << "do_lf_pre_rescue: lf_points " << lf_points[0].x << ", " << lf_points[0].y << std::endl;
+        }
+        target_point = _pure_pursuit->findLookaheadPoint(Position({0,0,0}), lf_points);
+    }
 
-    std::pair<float, float> command = _pure_pursuit->getControl(Position({0,0,0}), target_point, lf_points);
+    std::cout << "do_lf_pre_rescue: target_point " << target_point.value().x << ", " << target_point.value().y << std::endl;
+
+    std::pair<float, float> command = _pure_pursuit->getControl(Position({0,0,0}),target_point.value());
     std::cout << "do_lf_pre_rescue: Got command " << command.first << ", " << command.second << std::endl;
 
     
     _rescue_controller->step_pursuit(*_serial, command, timestamp);
     _serial->readAndPrint();
-    
-    // Query perception for bullseye, update if exists
-    std::optional<Position> bullseye = _perception->get_latest_bullsey_point();
-    if (bullseye) {
-        _closest_bullseye.x = bullseye->x;
-        _closest_bullseye.y = bullseye->y;
-        std::cout << "Updated closest bullseye to: " << bullseye.value().x << ", " << bullseye.value().y << std::endl;
-        _closest_bullseye.theta = bullseye->theta;
-    }
 
-    std::optional<Position> end_goal = _perception->get_latest_end_goal_point();
-    if (end_goal.has_value()) {
-        end_goal.value().x = end_goal->x;
-        end_goal.value().y = end_goal->y;
-        std::cout << "End goal at: " << end_goal.value().x << ", " << end_goal.value().y << std::endl;
-    }
-
-    if (_debug) {
-        _perception->make_debug_grid_with_pursuit(target_point, bullseye, end_goal);
+    if (_debug || _file_saving) {
+        _perception->make_debug_grid_with_pursuit(target_point, bullseye);
     }
 
     std::cout <<"do_lf_pre_rescue: done" << std::endl;
@@ -151,27 +150,32 @@ void AutonomyFSM::do_lf_post_rescue() {
     double timestamp = std::chrono::duration<double>(
         std::chrono::system_clock::now().time_since_epoch()
     ).count(); // seconds with fractional part
-
     _perception->get_latest_bgr_frame();
-    _perception->get_latest_line_follow_points();
-    std::vector<Position> lf_points = _perception->get_latest_line_follow_points();
+    std::optional<Position> target_point = std::nullopt;
+
+    std::optional<Position> end_goal = _perception->get_latest_end_goal_point();
+    if (end_goal.has_value()) {
+        _goal.x = end_goal->x;
+        _goal.y = end_goal->y;
+        std::cout << "End goal at: " << end_goal.value().x << ", " << end_goal.value().y << std::endl;
+
+        if (get_magnitude(end_goal.value()) <= LOOK_AHEAD_DISTANCE) {
+            target_point = end_goal.value();
+        }
+    }
+    if (!target_point.has_value()) {
+        _perception->get_latest_line_follow_points();
+        std::vector<Position> lf_points = _perception->get_latest_line_follow_points();
+        target_point = _pure_pursuit->findLookaheadPoint(Position({0,0,0}), lf_points);
+    }
 
     // Run PPS controller
-    Position target_point = _pure_pursuit->findLookaheadPoint(Position({0,0,0}), lf_points);
-    std::pair<float, float> command = _pure_pursuit->getControl(Position({0,0,0}), target_point, lf_points);
+    std::pair<float, float> command = _pure_pursuit->getControl(Position({0,0,0}), target_point.value());
 
-    if (_debug) {
-        _perception->make_debug_grid_with_pursuit(target_point);
+    if (_debug || _file_saving) {
+        _perception->make_debug_grid_with_pursuit(target_point, end_goal=end_goal);
     }
 
-    // TODO: send command to Arduino via interfacing library
-    // _rescue_controller->step_pursuit(*_serial, command, timestamp);
-
-    // Query perception for goal/dropoff
-    std::optional<Position> end_goal = _perception->get_latest_end_goal_point();
-    if (end_goal) {
-        _goal = end_goal.value();
-    }
 }
 
 void AutonomyFSM::do_dropping() {

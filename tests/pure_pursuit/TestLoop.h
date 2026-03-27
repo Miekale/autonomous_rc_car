@@ -39,7 +39,7 @@ void test_circle_tracking() {
 
     for (int i = 0; i < 400; i++) {
         Position lookahead = pp.findLookaheadPoint(robot, path);
-        auto [v, w] = pp.getControl(robot, lookahead, path);
+        auto [v, w] = pp.getControl(robot, lookahead);
 
         logFile << robot.x << "," << robot.y << "," << robot.theta << ","
                 << lookahead.x << "," << lookahead.y << ","
@@ -94,7 +94,7 @@ void simulate_figure8() {
 
     for (int i = 0; i < 800; i++) {
         Position lookahead = pp.findLookaheadPoint(robot, path);
-        auto [v, w] = pp.getControl(robot, lookahead, path);
+        auto [v, w] = pp.getControl(robot, lookahead);
 
         logFile << robot.x << "," << robot.y << "," << robot.theta << ","
                 << lookahead.x << "," << lookahead.y << ","
@@ -146,7 +146,7 @@ void simulate_90_degree_corner() {
 
     for (int i = 0; i < 400; i++) {
         Position lookahead = pp.findLookaheadPoint(robot, path);
-        auto [v, w] = pp.getControl(robot, lookahead, path);
+        auto [v, w] = pp.getControl(robot, lookahead);
 
         logFile << robot.x << "," << robot.y << "," << robot.theta << ","
                 << lookahead.x << "," << lookahead.y << ","

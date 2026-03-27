@@ -36,10 +36,11 @@ public:
     bool _rescued_lego_person;
     bool _dropped_lego_person;
     bool _debug;
+    bool _file_saving;
 
     // Constructor
     // Takes perception and controller singletons
-    AutonomyFSM(PurePursuit *pure_pursuit, Perception *perception, RescueController *rescue_controller, Serial *serial, bool debug = false);
+    AutonomyFSM(PurePursuit *pure_pursuit, Perception *perception, RescueController *rescue_controller, Serial *serial, bool debug = false, bool file_saving=false);
 
     // Main interface function: step
     void step();

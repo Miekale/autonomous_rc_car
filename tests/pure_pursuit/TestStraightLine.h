@@ -25,7 +25,7 @@ void test_can_travel_basic() {
     assert(lookahead.x > 0);
     assert(lookahead.y == 0);
 
-    auto [v, w] = pp.getControl(robot, lookahead, path);
+    auto [v, w] = pp.getControl(robot, lookahead);
 
     // ASSERT: Robot is below path, so it should turn LEFT (positive angular velocity)
     assert(w > 0);
@@ -93,7 +93,7 @@ void test_zigzag_tracking_with_tolerance() {
     for (int i = 0; i < 150; i++) {
 
         Position lookahead = pp.findLookaheadPoint(robot, path);
-        auto [v, w] = pp.getControl(robot, lookahead, path);
+        auto [v, w] = pp.getControl(robot, lookahead);
 
         // --- simulate motion ---
         robot.x += v * std::cos(robot.theta) * dt;

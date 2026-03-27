@@ -44,7 +44,8 @@ public:
 
     Perception(std::string camera_device,
                bool        video_file = false,
-               bool        debug = false);
+               bool        debug = false,
+               bool        file_saving = false);
     ~Perception();
 
     // ── Frame injection (e.g. from a ROS callback or capture thread) ──────────
@@ -66,7 +67,7 @@ public:
         const std::optional<Position>& target_point = std::nullopt,
         const std::optional<Position>& bullseye = std::nullopt,
         const std::optional<Position>& end_goal = std::nullopt
-    );
+        );
 
     // ── Utility functions ─────────────────────────────────────────────────────
     cv::Point2d robot_to_image(int x, int y);
@@ -101,11 +102,13 @@ private:
 
     // ── Latest frame (written by set_latest_bgr_frame) ───────────────────────
     cv::VideoCapture _cap;
+    cv::VideoWriter _video_writer;
     mutable std::mutex _mtx;
     cv::Mat            _latest_bgr_frame;
     DetectionResult    _latest_detection;
     bool               _has_frame = false;
     bool               _debug = false;
+    bool               _file_saving;
 
     // ── Pipeline steps ────────────────────────────────────────────────────────
     cv::Mat                  get_red_mask   (const cv::Mat& bgr_image) const;
